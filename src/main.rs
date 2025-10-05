@@ -1,4 +1,7 @@
-mod installers;
+mod apk;
+mod apt_get;
+mod gh_release;
+mod run;
 mod utils;
 
 use anyhow::Result;
@@ -52,6 +55,32 @@ enum Commands {
         /// Location to install binaries
         #[arg(long, default_value = "/usr/local/bin")]
         bin_location: String,
+
+        /// Regex pattern for asset filtering
+        #[arg(long)]
+        filter: Option<String>,
+
+        /// Verify checksums using checksum files
+        #[arg(long, default_value = "false")]
+        checksum: bool,
+    },
+
+    /// Run a command using pkgx for dependency management
+    Run {
+        /// Command to run (e.g., "python script.py", "node app.js")
+        command: String,
+
+        /// Working directory for execution
+        #[arg(long, default_value = ".")]
+        working_dir: String,
+
+        /// Environment variables (key=value pairs)
+        #[arg(long)]
+        env: Vec<String>,
+
+        /// Force pkgx even if dependencies exist locally
+        #[arg(long, default_value = "false")]
+        force_pkgx: bool,
     },
 }
 
@@ -69,13 +98,13 @@ fn main() -> Result<()> {
             let ppa_list: Option<Vec<String>> =
                 ppas.map(|p| p.split(',').map(|s| s.trim().to_string()).collect());
 
-            installers::apt_get::install(&pkg_list, ppa_list.as_deref(), force_ppas_on_non_ubuntu)?;
+            apt_get::install(&pkg_list, ppa_list.as_deref(), force_ppas_on_non_ubuntu)?;
         }
 
         Commands::Apk { packages } => {
             let pkg_list: Vec<String> = packages.split(',').map(|s| s.trim().to_string()).collect();
 
-            installers::apk::install(&pkg_list)?;
+            apk::install(&pkg_list)?;
         }
 
         Commands::GhRelease {
@@ -83,13 +112,31 @@ fn main() -> Result<()> {
             binary_names,
             version,
             bin_location,
+            filter,
+            checksum,
         } => {
             let binary_list: Vec<String> = binary_names
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .collect();
 
-            installers::gh_release::install(&repo, &binary_list, &version, &bin_location)?;
+            gh_release::install(
+                &repo,
+                &binary_list,
+                &version,
+                &bin_location,
+                filter.as_deref(),
+                checksum,
+            )?;
+        }
+
+        Commands::Run {
+            command,
+            working_dir,
+            env,
+            force_pkgx,
+        } => {
+            run::execute(&command, &working_dir, &env, force_pkgx)?;
         }
     }
 
