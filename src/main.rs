@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "microlayer")]
+#[command(name = "picolayer")]
 #[command(about = "Ensures minimal container layers", long_about = None)]
 #[command(version)]
 struct Cli {

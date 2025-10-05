@@ -1,4 +1,4 @@
-# Contributing to microlayer
+# Contributing to picolayer
 
 ## Building
 
@@ -6,7 +6,7 @@
 cargo build --release
 ```
 
-The binary will be in `target/release/microlayer`.
+The binary will be in `target/release/picolayer`.
 
 ## Testing
 
@@ -47,7 +47,7 @@ To add a new package manager installer:
 
 1. Update version in `Cargo.toml`
 2. Build release binary: `cargo build --release`
-3. Strip binary: `strip target/release/microlayer`
+3. Strip binary: `strip target/release/picolayer`
 4. Create GitHub release with binaries for different platforms
 
 ## Cross-compilation

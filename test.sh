@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "Building microlayer..."
+echo "Building picolayer..."
 cargo build --release
 
 echo ""
@@ -10,26 +10,26 @@ echo "========================"
 
 # Test version
 echo "Testing --version..."
-./target/release/microlayer --version
+./target/release/picolayer --version
 
 echo ""
 echo "Testing --help..."
-./target/release/microlayer --help
+./target/release/picolayer --help
 
 echo ""
 echo "Testing apt-get --help..."
-./target/release/microlayer apt-get --help
+./target/release/picolayer apt-get --help
 
 echo ""
 echo "Testing apk --help..."
-./target/release/microlayer apk --help
+./target/release/picolayer apk --help
 
 echo ""
 echo "Testing gh-release --help..."
-./target/release/microlayer gh-release --help
+./target/release/picolayer gh-release --help
 
 echo ""
 echo "================================"
 echo "All CLI tests passed successfully!"
-echo "Binary size: $(du -h target/release/microlayer | cut -f1)"
+echo "Binary size: $(du -h target/release/picolayer | cut -f1)"
 echo "================================"

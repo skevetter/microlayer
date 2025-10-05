@@ -1,8 +1,8 @@
-# microlayer
+# picolayer
 
 Ensures minimal container layers - A Rust clone of [nanolayer](https://github.com/devcontainers-extra/nanolayer).
 
-`microlayer` helps keep container layers as small as possible by automatically cleaning up installation leftovers such as apt-get update lists, caches, and temporary files.
+`picolayer` helps keep container layers as small as possible by automatically cleaning up installation leftovers such as apt-get update lists, caches, and temporary files.
 
 ## Features
 
@@ -16,42 +16,42 @@ Ensures minimal container layers - A Rust clone of [nanolayer](https://github.co
 ### From source (requires Rust):
 
 ```bash
-cargo install --git https://github.com/skevetter/microlayer
+cargo install --git https://github.com/skevetter/picolayer
 ```
 
 ### From binary:
 
-Download the latest release from the [releases page](https://github.com/skevetter/microlayer/releases).
+Download the latest release from the [releases page](https://github.com/skevetter/picolayer/releases).
 
 ## Usage
 
 ### Install apt-get packages
 
 ```bash
-microlayer apt-get htop,curl,git
+picolayer apt-get htop,curl,git
 ```
 
 With PPAs:
 
 ```bash
-microlayer apt-get neovim --ppas ppa:neovim-ppa/stable
+picolayer apt-get neovim --ppas ppa:neovim-ppa/stable
 ```
 
 ### Install apk packages
 
 ```bash
-microlayer apk htop,curl,git
+picolayer apk htop,curl,git
 ```
 
 ### Install from GitHub release
 
 ```bash
-microlayer gh-release cli/cli gh --version latest
+picolayer gh-release cli/cli gh --version latest
 ```
 
 ## Docker Example
 
-### Before (without microlayer):
+### Before (without picolayer):
 
 ```dockerfile
 FROM ubuntu:22.04
@@ -60,12 +60,12 @@ RUN apt-get update && apt-get install -y htop curl
 
 Layer size: **~25MB**
 
-### After (with microlayer):
+### After (with picolayer):
 
 ```dockerfile
 FROM ubuntu:22.04
-COPY microlayer /usr/local/bin/microlayer
-RUN microlayer apt-get htop,curl
+COPY picolayer /usr/local/bin/picolayer
+RUN picolayer apt-get htop,curl
 ```
 
 Layer size: **~2MB**
@@ -74,9 +74,9 @@ Or download directly in the Dockerfile:
 
 ```dockerfile
 FROM ubuntu:22.04
-RUN curl -sfL https://github.com/skevetter/microlayer/releases/latest/download/microlayer-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin && \
-    microlayer apt-get htop,curl && \
-    rm /usr/local/bin/microlayer
+RUN curl -sfL https://github.com/skevetter/picolayer/releases/latest/download/picolayer-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin && \
+    picolayer apt-get htop,curl && \
+    rm /usr/local/bin/picolayer
 ```
 
 ## Building
@@ -85,13 +85,13 @@ RUN curl -sfL https://github.com/skevetter/microlayer/releases/latest/download/m
 cargo build --release
 ```
 
-The binary will be in `target/release/microlayer`.
+The binary will be in `target/release/picolayer`.
 
 For smallest binary size:
 
 ```bash
 cargo build --release
-strip target/release/microlayer
+strip target/release/picolayer
 ```
 
 ## License

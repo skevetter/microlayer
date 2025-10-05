@@ -1,11 +1,11 @@
 [package]
-name = "microlayer"
+name = "picolayer"
 version = "0.1.0"
 edition = "2021"
-authors = ["Microlayer Contributors"]
+authors = ["Picolayer Contributors"]
 description = "Ensures minimal container layers - A Rust clone of nanolayer"
 license = "MIT"
-repository = "https://github.com/skevetter/microlayer"
+repository = "https://github.com/skevetter/picolayer"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }

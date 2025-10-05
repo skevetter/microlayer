@@ -67,7 +67,7 @@ fn get_release(client: &Client, repo: &str, version: &str) -> Result<Release> {
 
     let response = client
         .get(&url)
-        .header("User-Agent", "microlayer")
+        .header("User-Agent", "picolayer")
         .send()
         .context("Failed to fetch release information")?;
 
@@ -132,7 +132,7 @@ fn download_and_install(
     // Download to temp file
     let response = client
         .get(url)
-        .header("User-Agent", "microlayer")
+        .header("User-Agent", "picolayer")
         .send()
         .context("Failed to download asset")?;
 
