@@ -1,7 +1,9 @@
 use anyhow::{Context, Result};
 use flate2::read::GzDecoder;
+use regex::Regex;
 use reqwest::blocking::Client;
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 use std::fs::{self, File};
 use std::io::{BufReader, Write};
 use std::path::Path;
@@ -25,6 +27,8 @@ pub fn install(
     binary_names: &[String],
     version: &str,
     bin_location: &str,
+    pattern: Option<&str>,
+    verify_checksum: bool,
 ) -> Result<()> {
     let client = Client::new();
 
@@ -38,10 +42,15 @@ pub fn install(
     let os = std::env::consts::OS;
 
     // Find suitable asset
-    let asset = find_suitable_asset(&release.assets, arch, os)
+    let asset = find_suitable_asset(&release.assets, arch, os, pattern)
         .context("No suitable asset found for this platform")?;
 
     println!("Downloading: {}", asset.name);
+
+    // Verify checksum if requested
+    if verify_checksum {
+        verify_asset_checksum(&client, &release.assets, asset)?;
+    }
 
     // Download and extract
     download_and_install(
@@ -79,7 +88,19 @@ fn get_release(client: &Client, repo: &str, version: &str) -> Result<Release> {
     Ok(release)
 }
 
-fn find_suitable_asset<'a>(assets: &'a [Asset], arch: &str, os: &str) -> Option<&'a Asset> {
+fn find_suitable_asset<'a>(
+    assets: &'a [Asset],
+    arch: &str,
+    os: &str,
+    pattern: Option<&str>,
+) -> Option<&'a Asset> {
+    // If a regex pattern is provided, use it
+    if let Some(pattern_str) = pattern {
+        if let Ok(regex) = Regex::new(pattern_str) {
+            return assets.iter().find(|a| regex.is_match(&a.name));
+        }
+    }
+
     // Map Rust arch names to common naming conventions
     let arch_patterns = match arch {
         "x86_64" => vec!["x86_64", "amd64", "x64"],
@@ -109,6 +130,7 @@ fn find_suitable_asset<'a>(assets: &'a [Asset], arch: &str, os: &str) -> Option<
         // Check if it's an archive format
         let is_archive = name_lower.ends_with(".tar.gz")
             || name_lower.ends_with(".tgz")
+            || name_lower.ends_with(".tar.xz")
             || name_lower.ends_with(".zip");
 
         if has_arch && has_os && is_archive {
@@ -119,7 +141,10 @@ fn find_suitable_asset<'a>(assets: &'a [Asset], arch: &str, os: &str) -> Option<
     // Fallback: just return first archive
     assets.iter().find(|a| {
         let name = a.name.to_lowercase();
-        name.ends_with(".tar.gz") || name.ends_with(".tgz") || name.ends_with(".zip")
+        name.ends_with(".tar.gz")
+            || name.ends_with(".tgz")
+            || name.ends_with(".tar.xz")
+            || name.ends_with(".zip")
     })
 }
 
@@ -183,4 +208,105 @@ fn download_and_install(
     }
 
     Ok(())
+}
+
+fn verify_asset_checksum(client: &Client, assets: &[Asset], asset: &Asset) -> Result<()> {
+    println!("Verifying checksum...");
+
+    // Look for checksum files (common patterns: .sha256, .sha256sum, .asc, checksums.txt)
+    let checksum_patterns = [
+        format!("{}.sha256", asset.name),
+        format!("{}.sha256sum", asset.name),
+        format!("{}.asc", asset.name),
+        "checksums.txt".to_string(),
+        "SHA256SUMS".to_string(),
+        "sha256sums.txt".to_string(),
+    ];
+
+    let checksum_asset = assets.iter().find(|a| {
+        checksum_patterns
+            .iter()
+            .any(|pattern| a.name == *pattern || a.name.to_lowercase() == pattern.to_lowercase())
+    });
+
+    if let Some(checksum_asset) = checksum_asset {
+        println!("Found checksum file: {}", checksum_asset.name);
+
+        // Download the asset to calculate its hash
+        let asset_response = client
+            .get(&asset.browser_download_url)
+            .header("User-Agent", "picolayer")
+            .send()
+            .context("Failed to download asset for checksum verification")?;
+
+        if !asset_response.status().is_success() {
+            anyhow::bail!("Failed to download asset: {}", asset_response.status());
+        }
+
+        let asset_bytes = asset_response.bytes()?;
+        let mut hasher = Sha256::new();
+        hasher.update(&asset_bytes);
+        let computed_hash = hex::encode(hasher.finalize());
+
+        // Download checksum file
+        let checksum_response = client
+            .get(&checksum_asset.browser_download_url)
+            .header("User-Agent", "picolayer")
+            .send()
+            .context("Failed to download checksum file")?;
+
+        if !checksum_response.status().is_success() {
+            anyhow::bail!(
+                "Failed to download checksum file: {}",
+                checksum_response.status()
+            );
+        }
+
+        let checksum_content = checksum_response.text()?;
+
+        // Parse checksum file - handle various formats
+        let expected_hash = parse_checksum_file(&checksum_content, &asset.name)?;
+
+        if computed_hash.to_lowercase() == expected_hash.to_lowercase() {
+            println!("✓ Checksum verification passed");
+            Ok(())
+        } else {
+            anyhow::bail!(
+                "Checksum verification failed!\nExpected: {}\nComputed: {}",
+                expected_hash,
+                computed_hash
+            );
+        }
+    } else {
+        println!("Warning: No checksum file found, skipping verification");
+        Ok(())
+    }
+}
+
+fn parse_checksum_file(content: &str, asset_name: &str) -> Result<String> {
+    // Try to find the hash for the specific asset
+    // Common format: "hash  filename" or "hash *filename" or just "hash"
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        // Check if this line contains our asset name
+        if line.contains(asset_name) {
+            // Extract the hash (first field)
+            if let Some(hash) = line.split_whitespace().next() {
+                return Ok(hash.to_string());
+            }
+        }
+    }
+
+    // If no specific line found, assume the entire content is the hash
+    let hash = content.trim().split_whitespace().next().unwrap_or("");
+    if hash.len() == 64 {
+        // SHA256 hash length
+        Ok(hash.to_string())
+    } else {
+        anyhow::bail!("Could not parse checksum file for asset: {}", asset_name)
+    }
 }

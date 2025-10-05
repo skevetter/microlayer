@@ -52,6 +52,14 @@ enum Commands {
         /// Location to install binaries
         #[arg(long, default_value = "/usr/local/bin")]
         bin_location: String,
+
+        /// Regex pattern for asset filtering
+        #[arg(long)]
+        pattern: Option<String>,
+
+        /// Verify checksums using checksum files
+        #[arg(long, default_value = "false")]
+        verify_checksum: bool,
     },
 }
 
@@ -83,13 +91,22 @@ fn main() -> Result<()> {
             binary_names,
             version,
             bin_location,
+            pattern,
+            verify_checksum,
         } => {
             let binary_list: Vec<String> = binary_names
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .collect();
 
-            installers::gh_release::install(&repo, &binary_list, &version, &bin_location)?;
+            installers::gh_release::install(
+                &repo,
+                &binary_list,
+                &version,
+                &bin_location,
+                pattern.as_deref(),
+                verify_checksum,
+            )?;
         }
     }
 
