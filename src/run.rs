@@ -113,4 +113,3 @@ fn check_pkgx_binary() -> bool {
         .map(|s| s.success())
         .unwrap_or(false)
 }
-

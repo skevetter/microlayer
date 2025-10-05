@@ -14,8 +14,8 @@ fn run_picolayer(args: &[&str]) -> std::process::Output {
 
 /// Check if error is due to rate limiting or network issues
 fn is_transient_error(stderr: &str) -> bool {
-    stderr.contains("403 Forbidden") 
-        || stderr.contains("rate limit") 
+    stderr.contains("403 Forbidden")
+        || stderr.contains("rate limit")
         || stderr.contains("API rate limit")
         || stderr.contains("connection")
 }
@@ -31,9 +31,7 @@ fn check_binary_version(binary_path: &str, expected_substring: Option<&str>) -> 
         return false;
     }
 
-    let output = Command::new(binary_path)
-        .arg("--version")
-        .output();
+    let output = Command::new(binary_path).arg("--version").output();
 
     if let Ok(output) = output {
         let version_str = String::from_utf8_lossy(&output.stdout);
@@ -136,7 +134,10 @@ fn test_pkgx_github_release_installation() {
             eprintln!("Skipping test due to transient error: {}", stderr);
             return;
         }
-        eprintln!("Installation output: {}", String::from_utf8_lossy(&output.stdout));
+        eprintln!(
+            "Installation output: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
         eprintln!("Installation error: {}", stderr);
     }
 
@@ -181,7 +182,10 @@ fn test_lazygit_specific_version_installation() {
             eprintln!("Skipping test due to transient error: {}", stderr);
             return;
         }
-        eprintln!("Installation output: {}", String::from_utf8_lossy(&output.stdout));
+        eprintln!(
+            "Installation output: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
         eprintln!("Installation error: {}", stderr);
     }
 
@@ -227,7 +231,10 @@ fn test_lazygit_latest_with_checksum() {
             eprintln!("Skipping test due to transient error: {}", stderr);
             return;
         }
-        eprintln!("Installation output: {}", String::from_utf8_lossy(&output.stdout));
+        eprintln!(
+            "Installation output: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
         eprintln!("Installation error: {}", stderr);
     }
 
@@ -279,8 +286,14 @@ fn test_pkgx_with_gpg_verification() {
     ]);
 
     if !output.status.success() {
-        eprintln!("Installation output: {}", String::from_utf8_lossy(&output.stdout));
-        eprintln!("Installation error: {}", String::from_utf8_lossy(&output.stderr));
+        eprintln!(
+            "Installation output: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        eprintln!(
+            "Installation error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 
     assert!(
@@ -321,7 +334,10 @@ fn test_pkgx_with_filter_and_custom_location() {
             eprintln!("Skipping test due to transient error: {}", stderr);
             return;
         }
-        eprintln!("Installation output: {}", String::from_utf8_lossy(&output.stdout));
+        eprintln!(
+            "Installation output: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
         eprintln!("Installation error: {}", stderr);
     }
 

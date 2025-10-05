@@ -104,12 +104,7 @@ impl Installer {
         AssetSelector::new().select(&release.assets, filter)
     }
 
-    fn verify_asset(
-        &self,
-        assets: &[Asset],
-        asset: &Asset,
-        gpg_key: Option<&str>,
-    ) -> Result<()> {
+    fn verify_asset(&self, assets: &[Asset], asset: &Asset, gpg_key: Option<&str>) -> Result<()> {
         AssetVerifier::new(&self.client).verify(assets, asset, gpg_key)
     }
 
@@ -150,9 +145,7 @@ impl<'a> ReleaseClient<'a> {
             anyhow::bail!("Failed to fetch release: {}", response.status());
         }
 
-        response
-            .json()
-            .context("Failed to parse release JSON")
+        response.json().context("Failed to parse release JSON")
     }
 
     fn build_url(&self, repo: &str, version: &str) -> String {
@@ -359,7 +352,7 @@ impl<'a> AssetVerifier<'a> {
 
     fn verify(&self, assets: &[Asset], asset: &Asset, gpg_key: Option<&str>) -> Result<()> {
         println!("Verifying asset...");
-        
+
         let checksum_asset = self.find_checksum_asset(assets, asset)?;
 
         if checksum_asset.name.ends_with(".asc") || checksum_asset.name.ends_with(".sig") {
@@ -574,8 +567,22 @@ impl<'a> GpgVerifier<'a> {
 
 fn get_filename_variants(filename: &str) -> Vec<String> {
     let compression_extensions = [
-        ".tar.gz", ".tgz", ".tar.xz", ".txz", ".tar.bz2", ".tbz2", ".tar.Z", ".tar.lz",
-        ".tar.lzma", ".zip", ".gz", ".xz", ".bz2", ".Z", ".lz", ".lzma",
+        ".tar.gz",
+        ".tgz",
+        ".tar.xz",
+        ".txz",
+        ".tar.bz2",
+        ".tbz2",
+        ".tar.Z",
+        ".tar.lz",
+        ".tar.lzma",
+        ".zip",
+        ".gz",
+        ".xz",
+        ".bz2",
+        ".Z",
+        ".lz",
+        ".lzma",
     ];
 
     let mut variants = vec![filename.to_string()];
@@ -624,5 +631,3 @@ fn compute_sha256(data: &[u8]) -> String {
     hasher.update(data);
     hex::encode(hasher.finalize())
 }
-
-
