@@ -1,5 +1,6 @@
 mod apk;
 mod apt_get;
+mod brew;
 mod gh_release;
 mod run;
 mod utils;
@@ -39,6 +40,12 @@ enum Commands {
         packages: String,
     },
 
+    /// Install packages using Homebrew
+    Brew {
+        /// Comma-separated list of packages to install
+        packages: String,
+    },
+
     /// Install binary from GitHub release
     #[command(name = "gh-release")]
     GhRelease {
@@ -63,6 +70,10 @@ enum Commands {
         /// Verify checksums using checksum files
         #[arg(long, default_value = "false")]
         checksum: bool,
+
+        /// GPG public key for signature verification (can be a file path or key content)
+        #[arg(long)]
+        gpg_key: Option<String>,
     },
 
     /// Run a command using pkgx for dependency management
@@ -107,6 +118,12 @@ fn main() -> Result<()> {
             apk::install(&pkg_list)?;
         }
 
+        Commands::Brew { packages } => {
+            let pkg_list: Vec<String> = packages.split(',').map(|s| s.trim().to_string()).collect();
+
+            brew::install(&pkg_list)?;
+        }
+
         Commands::GhRelease {
             repo,
             binary_names,
@@ -114,6 +131,7 @@ fn main() -> Result<()> {
             bin_location,
             filter,
             checksum,
+            gpg_key,
         } => {
             let binary_list: Vec<String> = binary_names
                 .split(',')
@@ -127,6 +145,7 @@ fn main() -> Result<()> {
                 &bin_location,
                 filter.as_deref(),
                 checksum,
+                gpg_key.as_deref(),
             )?;
         }
 

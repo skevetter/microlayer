@@ -29,6 +29,7 @@ pub fn install(
     bin_location: &str,
     filter: Option<&str>,
     checksum: bool,
+    gpg_key: Option<&str>,
 ) -> Result<()> {
     let client = Client::new();
     let release = get_release(&client, repo, version)?;
@@ -43,7 +44,7 @@ pub fn install(
     println!("Downloading: {}", asset.name);
 
     if checksum {
-        verify_asset_checksum(&client, &release.assets, asset)?;
+        verify_asset_checksum(&client, &release.assets, asset, gpg_key)?;
     }
 
     download_and_install(
@@ -233,7 +234,7 @@ fn get_asset_variants(filename: &str) -> Vec<String> {
     variants
 }
 
-fn verify_asset_checksum(client: &Client, assets: &[Asset], asset: &Asset) -> Result<()> {
+fn verify_asset_checksum(client: &Client, assets: &[Asset], asset: &Asset, gpg_key: Option<&str>) -> Result<()> {
     println!("Verifying checksum...");
     let asset_variants = get_asset_variants(&asset.name);
     let mut checksum_patterns = Vec::new();
@@ -276,10 +277,15 @@ fn verify_asset_checksum(client: &Client, assets: &[Asset], asset: &Asset) -> Re
     if let Some(checksum_asset) = checksum_asset {
         println!("Found checksum file: {}", checksum_asset.name);
         if checksum_asset.name.ends_with(".asc") || checksum_asset.name.ends_with(".sig") {
-            // TODO: Implement GPG verification. Requires updating arguments to CLI.
-            println!("Warning: Found signature file but GPG verification is not implemented yet");
-            println!("Skipping checksum verification");
-            return Ok(());
+            if let Some(key_content) = gpg_key {
+                println!("Verifying GPG signature...");
+                return verify_gpg_signature(client, asset, checksum_asset, key_content);
+            } else {
+                println!("Warning: Found signature file but no GPG key provided");
+                println!("Use --gpg-key option to enable GPG verification");
+                println!("Skipping checksum verification");
+                return Ok(());
+            }
         }
 
         let asset_response = client
@@ -359,3 +365,69 @@ fn parse_checksum_file(content: &str, asset_name: &str) -> Result<String> {
         anyhow::bail!("Could not parse checksum file for asset: {}", asset_name)
     }
 }
+
+fn verify_gpg_signature(
+    client: &Client,
+    asset: &Asset,
+    signature_asset: &Asset,
+    gpg_key_content: &str,
+) -> Result<()> {
+    use pgp::composed::{Deserializable, DetachedSignature, SignedPublicKey};
+    use std::io::Cursor;
+
+    println!("Downloading asset for verification...");
+    let asset_response = client
+        .get(&asset.browser_download_url)
+        .header("User-Agent", "picolayer")
+        .send()
+        .context("Failed to download asset")?;
+
+    if !asset_response.status().is_success() {
+        anyhow::bail!("Failed to download asset: {}", asset_response.status());
+    }
+
+    let asset_data = asset_response.bytes()?;
+
+    println!("Downloading signature file...");
+    let sig_response = client
+        .get(&signature_asset.browser_download_url)
+        .header("User-Agent", "picolayer")
+        .send()
+        .context("Failed to download signature")?;
+
+    if !sig_response.status().is_success() {
+        anyhow::bail!(
+            "Failed to download signature: {}",
+            sig_response.status()
+        );
+    }
+
+    let sig_data = sig_response.bytes()?;
+
+    // Parse the GPG key
+    println!("Loading GPG public key...");
+    let key_data = if std::path::Path::new(gpg_key_content).exists() {
+        std::fs::read_to_string(gpg_key_content)
+            .context("Failed to read GPG key file")?
+    } else {
+        gpg_key_content.to_string()
+    };
+
+    let (public_key, _headers) = SignedPublicKey::from_string(&key_data)
+        .context("Failed to parse GPG public key")?;
+
+    // Parse the signature
+    println!("Parsing signature...");
+    let signature = DetachedSignature::from_bytes(Cursor::new(&sig_data[..]))
+        .context("Failed to parse signature")?;
+
+    // Verify the signature
+    println!("Verifying signature...");
+    signature
+        .verify(&public_key, &asset_data[..])
+        .context("GPG signature verification failed")?;
+
+    println!("GPG signature verification passed!");
+    Ok(())
+}
+
