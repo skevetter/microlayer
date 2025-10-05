@@ -7,7 +7,7 @@ Ensures minimal container layers - A Rust clone of [nanolayer](https://github.co
 ## Features
 
 - **apt-get**: Install Debian/Ubuntu packages with automatic cleanup
-- **apk**: Install Alpine packages with automatic cleanup  
+- **apk**: Install Alpine packages with automatic cleanup
 - **gh-release**: Install binaries from GitHub releases
 - **Minimal footprint**: Optimized for small binary size and minimal dependencies
 

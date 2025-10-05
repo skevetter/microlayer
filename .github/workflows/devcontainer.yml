@@ -1,0 +1,14 @@
+name: Devcontainer
+
+on:
+  push:
+    paths:
+      - ".devcontainer/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: skevetter/workflows/.github/workflows/devcontainer.yml@main
+    with:
+      runCmd: test -x "$(command -v mise)"
+    secrets: inherit

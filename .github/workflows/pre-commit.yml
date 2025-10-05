@@ -1,0 +1,10 @@
+name: Pre-commit Checks
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: skevetter/workflows/.github/workflows/pre-commit.yml@main
+    secrets: inherit
