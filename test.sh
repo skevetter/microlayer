@@ -29,6 +29,10 @@ echo "Testing gh-release --help..."
 ./target/release/picolayer gh-release --help
 
 echo ""
+echo "Testing run --help..."
+./target/release/picolayer run --help
+
+echo ""
 echo "================================"
 echo "All CLI tests passed successfully!"
 echo "Binary size: $(du -h target/release/picolayer | cut -f1)"

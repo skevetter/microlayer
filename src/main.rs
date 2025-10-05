@@ -61,6 +61,24 @@ enum Commands {
         #[arg(long, default_value = "false")]
         verify_checksum: bool,
     },
+
+    /// Run a command using pkgx for dependency management
+    Run {
+        /// Command to run (e.g., "python script.py", "node app.js")
+        command: String,
+
+        /// Working directory for execution
+        #[arg(long, default_value = ".")]
+        working_dir: String,
+
+        /// Environment variables (key=value pairs)
+        #[arg(long)]
+        env: Vec<String>,
+
+        /// Force pkgx even if dependencies exist locally
+        #[arg(long, default_value = "false")]
+        force_pkgx: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -107,6 +125,15 @@ fn main() -> Result<()> {
                 pattern.as_deref(),
                 verify_checksum,
             )?;
+        }
+
+        Commands::Run {
+            command,
+            working_dir,
+            env,
+            force_pkgx,
+        } => {
+            installers::run::execute(&command, &working_dir, &env, force_pkgx)?;
         }
     }
 

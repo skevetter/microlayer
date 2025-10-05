@@ -302,7 +302,7 @@ fn parse_checksum_file(content: &str, asset_name: &str) -> Result<String> {
     }
 
     // If no specific line found, assume the entire content is the hash
-    let hash = content.trim().split_whitespace().next().unwrap_or("");
+    let hash = content.split_whitespace().next().unwrap_or("");
     if hash.len() == 64 {
         // SHA256 hash length
         Ok(hash.to_string())
