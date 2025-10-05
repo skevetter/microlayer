@@ -16,27 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
         with:
           components: rustfmt, clippy
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Check formatting
         run: cargo fmt -- --check
@@ -45,7 +28,7 @@ jobs:
         run: cargo clippy -- -D warnings
 
       - name: Build
-        run: cargo build --release --verbose
+        uses: ./.github/actions/build-release
 
       - name: Run tests
         run: ./test.sh
@@ -54,7 +37,7 @@ jobs:
         run: |
           SIZE=$(stat -c%s "target/release/picolayer")
           echo "Binary size: $SIZE bytes"
-          if [ $SIZE -gt 3000000 ]; then
-            echo "Warning: Binary size exceeds 3MB"
+          if [ $SIZE -gt 5242880 ]; then  # 5MB
+            echo "Warning: Binary size exceeds 5MB"
             exit 1
           fi

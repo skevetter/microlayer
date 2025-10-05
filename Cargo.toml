@@ -7,6 +7,10 @@ description = "A package installer and script runner that ensures minimal contai
 license = "MIT"
 repository = "https://github.com/skevetter/picolayer"
 
+[features]
+default = []
+pkgx-integration = ["libpkgx"]
+
 [dependencies]
 anyhow = "1.0.100"
 clap = { version = "4.5.48", features = ["derive"] }
@@ -20,6 +24,7 @@ serde_json = "1.0.145"
 sha2 = "0.10.9"
 tar = "0.4.44"
 tempfile = "3.23.0"
+libpkgx = { version = "0.7.0", optional = true }
 
 [profile.release]
 strip = true

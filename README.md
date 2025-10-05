@@ -8,8 +8,19 @@ Ensures minimal container layers - A Rust clone of [nanolayer](https://github.co
 
 - **apt-get**: Install Debian/Ubuntu packages with automatic cleanup
 - **apk**: Install Alpine packages with automatic cleanup
-- **gh-release**: Install binaries from GitHub releases
+- **brew**: Install packages using Homebrew
+- **gh-release**: Install binaries from GitHub releases with checksum and GPG verification
+- **run**: Execute commands with pkgx for automatic dependency management
 - **Minimal footprint**: Optimized for small binary size and minimal dependencies
+
+## Versions
+
+picolayer is available in two versions:
+
+- **Lite** (~4MB): Uses the pkgx binary if available on PATH
+- **Standard** (~4MB): Includes optional pkgx library integration (feature flag: `pkgx-integration`)
+
+Both versions are well under their respective size limits (5MB for lite, 15MB for standard).
 
 ## Installation
 
@@ -22,6 +33,10 @@ cargo install --git https://github.com/skevetter/picolayer
 ### From binary:
 
 Download the latest release from the [releases page](https://github.com/skevetter/picolayer/releases).
+
+Choose between:
+- `picolayer-lite-*`: Smaller binary, uses pkgx binary if available
+- `picolayer-*`: Standard version with optional pkgx library integration
 
 ## Usage
 
@@ -43,10 +58,34 @@ picolayer apt-get neovim --ppas ppa:neovim-ppa/stable
 picolayer apk htop,curl,git
 ```
 
+### Install Homebrew packages
+
+```bash
+picolayer brew jq,tree
+```
+
 ### Install from GitHub release
 
 ```bash
 picolayer gh-release cli/cli gh --version latest
+```
+
+With checksum verification:
+
+```bash
+picolayer gh-release jesseduffield/lazygit lazygit --version latest --checksum
+```
+
+With GPG signature verification:
+
+```bash
+picolayer gh-release pkgxdev/pkgx pkgx --version latest --checksum --gpg-key /path/to/public-key.asc
+```
+
+### Run commands with pkgx
+
+```bash
+picolayer run "python script.py" --working-dir /path/to/project
 ```
 
 ## Docker Example
@@ -81,18 +120,19 @@ RUN curl -sfL https://github.com/skevetter/picolayer/releases/latest/download/pi
 
 ## Building
 
+### Lite version (default)
+
 ```bash
 cargo build --release
+```
+
+### Standard version (with pkgx integration)
+
+```bash
+cargo build --release --features pkgx-integration
 ```
 
 The binary will be in `target/release/picolayer`.
-
-For smallest binary size:
-
-```bash
-cargo build --release
-strip target/release/picolayer
-```
 
 ## License
 

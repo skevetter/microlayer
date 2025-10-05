@@ -1,0 +1,69 @@
+name: 'Build Variants'
+description: 'Build both lite and standard variants'
+inputs:
+  target:
+    description: 'Target triple for cross-compilation'
+    required: true
+  use-cross:
+    description: 'Use cross for cross-compilation'
+    required: false
+    default: 'false'
+runs:
+  using: 'composite'
+  steps:
+    - name: Install cross
+      if: inputs.use-cross == 'true'
+      shell: bash
+      run: cargo install cross --git https://github.com/cross-rs/cross
+
+    - name: Build lite version
+      shell: bash
+      run: |
+        if [ "${{ inputs.use-cross }}" = "true" ]; then
+          cross build --release --target ${{ inputs.target }}
+        else
+          cargo build --release --target ${{ inputs.target }}
+        fi
+        
+        # Rename binary to picolayer-lite
+        TARGET_DIR="target/${{ inputs.target }}/release"
+        if [ -f "${TARGET_DIR}/picolayer" ]; then
+          cp "${TARGET_DIR}/picolayer" "${TARGET_DIR}/picolayer-lite"
+          echo "Lite version size: $(du -h ${TARGET_DIR}/picolayer-lite | cut -f1)"
+        fi
+
+    - name: Build standard version
+      shell: bash
+      run: |
+        if [ "${{ inputs.use-cross }}" = "true" ]; then
+          cross build --release --target ${{ inputs.target }} --features pkgx-integration
+        else
+          cargo build --release --target ${{ inputs.target }} --features pkgx-integration
+        fi
+        
+        # Keep standard version as picolayer
+        TARGET_DIR="target/${{ inputs.target }}/release"
+        if [ -f "${TARGET_DIR}/picolayer" ]; then
+          echo "Standard version size: $(du -h ${TARGET_DIR}/picolayer | cut -f1)"
+        fi
+
+    - name: Verify binary sizes
+      shell: bash
+      run: |
+        TARGET_DIR="target/${{ inputs.target }}/release"
+        
+        # Check lite version
+        LITE_SIZE=$(stat -c%s "${TARGET_DIR}/picolayer-lite" 2>/dev/null || stat -f%z "${TARGET_DIR}/picolayer-lite")
+        echo "Lite version size: $LITE_SIZE bytes"
+        if [ $LITE_SIZE -gt 5242880 ]; then  # 5MB
+          echo "Error: Lite version exceeds 5MB"
+          exit 1
+        fi
+        
+        # Check standard version
+        STD_SIZE=$(stat -c%s "${TARGET_DIR}/picolayer" 2>/dev/null || stat -f%z "${TARGET_DIR}/picolayer")
+        echo "Standard version size: $STD_SIZE bytes"
+        if [ $STD_SIZE -gt 15728640 ]; then  # 15MB
+          echo "Error: Standard version exceeds 15MB"
+          exit 1
+        fi

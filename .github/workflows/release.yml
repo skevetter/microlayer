@@ -42,56 +42,36 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
         with:
           targets: ${{ matrix.target }}
 
-      - name: Cache cargo registry
-        uses: actions/cache@v4
+      - name: Build Variants
+        uses: ./.github/actions/build-variants
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          target: ${{ matrix.target }}
+          use-cross: ${{ matrix.cross }}
 
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Install cross
-        if: matrix.cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
-
-      - name: Build
-        run: |
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }}
-          else
-            cargo build --release --target ${{ matrix.target }}
-          fi
-
-      - name: Check binary size
-        run: |
-          SIZE=$(stat -c%s "target/${{ matrix.target }}/release/picolayer" 2>/dev/null || stat -f%z "target/${{ matrix.target }}/release/picolayer")
-          echo "Binary size: $SIZE bytes"
-          if [ $SIZE -gt 20000000 ]; then
-            echo "Error: Binary size exceeds 20MB"
-            exit 1
-          fi
-
-      - name: Create archive
+      - name: Create archives
         run: |
           cd target/${{ matrix.target }}/release
+          
+          # Create lite version archive
+          tar czf picolayer-lite-${{ matrix.target }}.tar.gz picolayer-lite
+          mv picolayer-lite-${{ matrix.target }}.tar.gz ../../../
+          
+          # Create standard version archive
           tar czf picolayer-${{ matrix.target }}.tar.gz picolayer
           mv picolayer-${{ matrix.target }}.tar.gz ../../../
 
-      - name: Upload artifact
+      - name: Upload lite artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: picolayer-lite-${{ matrix.target }}
+          path: picolayer-lite-${{ matrix.target }}.tar.gz
+
+      - name: Upload standard artifact
         uses: actions/upload-artifact@v4
         with:
           name: picolayer-${{ matrix.target }}

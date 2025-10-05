@@ -31,14 +31,35 @@ pub fn execute(
         }
     }
 
+    #[cfg(feature = "pkgx-integration")]
+    {
+        if _force_pkgx || !check_pkgx_binary() {
+            return execute_with_pkgx_library(command, working_path, &env_map);
+        }
+    }
+
+    execute_with_pkgx_binary(command, working_path, &env_map)
+}
+
+#[cfg(feature = "pkgx-integration")]
+fn execute_with_pkgx_library(
+    command: &str,
+    working_path: &Path,
+    env_map: &[(String, String)],
+) -> Result<()> {
+    // TODO: Implement pkgx library integration
+    // For now, fall back to binary
+    println!("Note: pkgx library integration is under development, using binary");
+    execute_with_pkgx_binary(command, working_path, env_map)
+}
+
+fn execute_with_pkgx_binary(
+    command: &str,
+    working_path: &Path,
+    env_map: &[(String, String)],
+) -> Result<()> {
     // Check if pkgx is available
-    let pkgx_available = Command::new("pkgx")
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
+    let pkgx_available = check_pkgx_binary();
 
     if !pkgx_available {
         anyhow::bail!(
@@ -82,3 +103,14 @@ pub fn execute(
     println!("Command executed successfully!");
     Ok(())
 }
+
+fn check_pkgx_binary() -> bool {
+    Command::new("pkgx")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
