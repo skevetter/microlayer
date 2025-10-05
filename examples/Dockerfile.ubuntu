@@ -1,0 +1,11 @@
+# Example: Using microlayer with apt-get (Ubuntu/Debian)
+FROM ubuntu:22.04
+
+# Copy the microlayer binary
+COPY target/release/microlayer /usr/local/bin/microlayer
+
+# Install packages with automatic cleanup
+RUN microlayer apt-get curl,git,htop
+
+# Verify the packages were installed
+RUN curl --version && git --version && htop --version

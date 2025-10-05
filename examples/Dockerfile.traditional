@@ -1,0 +1,7 @@
+# Comparison: Traditional apt-get (without microlayer)
+FROM ubuntu:22.04
+
+# Traditional approach - leaves cache and temporary files
+RUN apt-get update && apt-get install -y curl git htop
+
+# This layer will be significantly larger (~25MB) compared to using microlayer (~2MB)
