@@ -82,7 +82,7 @@ fn get_release(client: &Client, repo: &str, version: &str) -> Result<Release> {
 fn find_suitable_asset<'a>(assets: &'a [Asset], arch: &str, os: &str) -> Option<&'a Asset> {
     // Map Rust arch names to common naming conventions
     let arch_patterns = match arch {
-        "x86_64" => vec!["x86_64", "amd64", "x64"],
+        "x86_64" => vec!["x86_64", "amd64", "x64", "x86-64"],
         "aarch64" => vec!["aarch64", "arm64"],
         "arm" => vec!["arm", "armv7"],
         _ => vec![arch],
