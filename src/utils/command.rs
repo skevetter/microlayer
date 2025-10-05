@@ -12,8 +12,16 @@ pub fn execute_with_output(cmd: &str, print_output: bool) -> Result<String> {
     let output = Command::new("sh")
         .arg("-c")
         .arg(cmd)
-        .stdout(if print_output { Stdio::inherit() } else { Stdio::piped() })
-        .stderr(if print_output { Stdio::inherit() } else { Stdio::piped() })
+        .stdout(if print_output {
+            Stdio::inherit()
+        } else {
+            Stdio::piped()
+        })
+        .stderr(if print_output {
+            Stdio::inherit()
+        } else {
+            Stdio::piped()
+        })
         .output()
         .context(format!("Failed to execute command: {}", cmd))?;
 

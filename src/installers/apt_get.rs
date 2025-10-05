@@ -1,7 +1,7 @@
+use crate::utils::{command, linux_info};
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
-use crate::utils::{command, linux_info};
 
 const PPA_SUPPORT_PACKAGES: &[&str] = &["software-properties-common"];
 const PPA_SUPPORT_PACKAGES_DEBIAN: &[&str] = &["python3-launchpadlib"];
@@ -18,7 +18,7 @@ pub fn install(
     );
 
     let mut ppas = ppas.map(|p| p.to_vec()).unwrap_or_default();
-    
+
     // Warn about PPAs on non-Ubuntu
     if !ppas.is_empty() && !linux_info::is_ubuntu() && !force_ppas_on_non_ubuntu {
         eprintln!("Warning: PPAs are ignored on non-Ubuntu distros!");
@@ -39,16 +39,10 @@ pub fn install(
     }
 
     // Install packages with cleanup
-    let result = install_with_cleanup(packages, &ppas, &cache_backup);
-
-    result
+    install_with_cleanup(packages, &ppas, &cache_backup)
 }
 
-fn install_with_cleanup(
-    packages: &[String],
-    ppas: &[String],
-    cache_backup: &Path,
-) -> Result<()> {
+fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Path) -> Result<()> {
     // Update package lists
     command::execute("apt-get update -y")?;
 

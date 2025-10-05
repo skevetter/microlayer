@@ -16,12 +16,15 @@ pub fn detect_distro() -> Result<LinuxDistro> {
             return Ok(LinuxDistro::Ubuntu);
         } else if contents.contains("ID=alpine") || contents.contains("ID=\"alpine\"") {
             return Ok(LinuxDistro::Alpine);
-        } else if contents.contains("ID=debian") || contents.contains("ID=\"debian\"")
-            || contents.contains("ID_LIKE=debian") || contents.contains("ID_LIKE=\"debian\"") {
+        } else if contents.contains("ID=debian")
+            || contents.contains("ID=\"debian\"")
+            || contents.contains("ID_LIKE=debian")
+            || contents.contains("ID_LIKE=\"debian\"")
+        {
             return Ok(LinuxDistro::Debian);
         }
     }
-    
+
     Ok(LinuxDistro::Other)
 }
 
@@ -32,7 +35,10 @@ pub fn is_ubuntu() -> bool {
 
 /// Check if the system is Debian-like
 pub fn is_debian_like() -> bool {
-    matches!(detect_distro(), Ok(LinuxDistro::Ubuntu) | Ok(LinuxDistro::Debian))
+    matches!(
+        detect_distro(),
+        Ok(LinuxDistro::Ubuntu) | Ok(LinuxDistro::Debian)
+    )
 }
 
 /// Check if the system is Alpine

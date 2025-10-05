@@ -1,7 +1,7 @@
+use crate::utils::{command, linux_info};
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
-use crate::utils::{command, linux_info};
 
 /// Install packages using apk with minimal layer footprint
 pub fn install(packages: &[String]) -> Result<()> {
@@ -23,9 +23,7 @@ pub fn install(packages: &[String]) -> Result<()> {
     }
 
     // Install packages with cleanup
-    let result = install_with_cleanup(packages, &cache_backup);
-
-    result
+    install_with_cleanup(packages, &cache_backup)
 }
 
 fn install_with_cleanup(packages: &[String], cache_backup: &Path) -> Result<()> {
@@ -39,8 +37,7 @@ fn install_with_cleanup(packages: &[String], cache_backup: &Path) -> Result<()> 
     // Restore cache
     command::execute("rm -rf /var/cache/apk")?;
     if cache_backup.exists() {
-        fs::rename(cache_backup, "/var/cache/apk")
-            .context("Failed to restore apk cache")?;
+        fs::rename(cache_backup, "/var/cache/apk").context("Failed to restore apk cache")?;
     }
 
     Ok(())
