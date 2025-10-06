@@ -244,3 +244,58 @@ fn check_pkgx_binary() -> bool {
         .map(|s| s.success())
         .unwrap_or(false)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_tool_spec_with_version() {
+        let (name, version) = parse_tool_spec("python@3.11");
+        assert_eq!(name, "python");
+        assert_eq!(version, "3.11");
+    }
+
+    #[test]
+    fn test_parse_tool_spec_without_version() {
+        let (name, version) = parse_tool_spec("python");
+        assert_eq!(name, "python");
+        assert_eq!(version, "latest");
+    }
+
+    #[test]
+    fn test_parse_tool_spec_complex_version() {
+        let (name, version) = parse_tool_spec("node@18.16.0");
+        assert_eq!(name, "node");
+        assert_eq!(version, "18.16.0");
+    }
+
+    #[test]
+    fn test_map_tool_to_project_python() {
+        assert_eq!(map_tool_to_project("python"), "python.org");
+        assert_eq!(map_tool_to_project("python3"), "python.org");
+        assert_eq!(map_tool_to_project("pip"), "python.org");
+    }
+
+    #[test]
+    fn test_map_tool_to_project_node() {
+        assert_eq!(map_tool_to_project("node"), "nodejs.org");
+        assert_eq!(map_tool_to_project("npm"), "nodejs.org");
+    }
+
+    #[test]
+    fn test_map_tool_to_project_go() {
+        assert_eq!(map_tool_to_project("go"), "go.dev");
+    }
+
+    #[test]
+    fn test_map_tool_to_project_rust() {
+        assert_eq!(map_tool_to_project("cargo"), "rust-lang.org");
+        assert_eq!(map_tool_to_project("rustc"), "rust-lang.org");
+    }
+
+    #[test]
+    fn test_map_tool_to_project_unknown() {
+        assert_eq!(map_tool_to_project("unknown-tool"), "unknown-tool");
+    }
+}
