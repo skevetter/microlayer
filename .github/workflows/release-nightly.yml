@@ -28,7 +28,7 @@ jobs:
             cross: false
           - target: aarch64-apple-darwin
             os: macos-latest
-            cross: true
+            cross: false
 
     steps:
       - uses: actions/checkout@v5
@@ -69,9 +69,9 @@ jobs:
 
       - name: Check binary size
         run: |
-          SIZE=$(stat -c%s "target/${{ matrix.target }}/release/picolayer" 2>/dev/null || stat -f%z "target/${{ matrix.target }}/release/picolayer")
-          echo "Binary size: $SIZE bytes"
-          if [ $SIZE -gt 20000000 ]; then
+          SIZE="$(stat -c%s "target/${{ matrix.target }}/release/picolayer" 2>/dev/null || stat -f%z "target/${{ matrix.target }}/release/picolayer")"
+          echo "Binary size: \"$SIZE\" bytes"
+          if [ "$SIZE" -gt 20000000 ]; then
             echo "Error: Binary size exceeds 20MB"
             exit 1
           fi
@@ -103,15 +103,17 @@ jobs:
       - name: Generate nightly tag
         id: tag
         run: |
-          VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d'"' -f2)
-          TAG="v${VERSION}-nightly.$(date +%Y%m%d)"
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "Nightly tag: ${TAG}"
+          VERSION="$(grep '^version = ' Cargo.toml | head -1 | cut -d'"' -f2)"
+          TAG="v${VERSION}-nightly.$(date +"%Y%m%d")"
+          BUILD_DATE="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "tag=\"${TAG}\"" >> "$GITHUB_OUTPUT"
+          echo "date=\"${BUILD_DATE}\"" >> "$GITHUB_OUTPUT"
+          echo "Nightly tag: \"${TAG}\""
 
       - name: Delete existing nightly release
         run: |
-          gh release delete ${{ steps.tag.outputs.tag }} --yes || true
-          git push origin :refs/tags/${{ steps.tag.outputs.tag }} || true
+          gh release delete "${{ steps.tag.outputs.tag }}" --yes || true
+          git push origin ":refs/tags/${{ steps.tag.outputs.tag }}" || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -130,7 +132,7 @@ jobs:
 
             For production use, please use the latest stable release.
 
-            **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+            **Build Date**: ${{ steps.tag.outputs.date }}
             **Commit**: ${{ github.sha }}
           files: |
             artifacts/*/picolayer-*.tar.gz

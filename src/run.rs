@@ -1,12 +1,11 @@
 use anyhow::{Context, Result};
+#[cfg(not(target_os = "macos"))]
+use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 #[cfg(feature = "pkgx-integration")]
 use std::collections::HashMap;
-
-#[cfg(feature = "pkgx-integration")]
-use indicatif;
 
 /// Completely uninstall pkgx and remove all associated files
 pub fn uninstall_pkgx() -> Result<()> {
@@ -211,11 +210,7 @@ fn map_tool_to_project(tool_name: &str) -> String {
         "bun" => "bun.sh".to_string(),
         _ => {
             // For unknown tools, assume it might already be a project name
-            if tool_name.contains('.') {
-                tool_name.to_string() // Already looks like a project name
-            } else {
-                tool_name.to_string() // Use as-is
-            }
+            tool_name.to_string() // Use as-is
         }
     }
 }

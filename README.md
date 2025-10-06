@@ -103,7 +103,7 @@ picolayer run "python script.py" --force-pkgx
 
 The `run` command automatically detects dependencies from your project files:
 - `package.json` → Node.js
-- `requirements.txt`, `pyproject.toml` → Python  
+- `requirements.txt`, `pyproject.toml` → Python
 - `Cargo.toml` → Rust
 - `go.mod` → Go
 - `Gemfile` → Ruby

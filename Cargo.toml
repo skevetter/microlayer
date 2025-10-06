@@ -30,3 +30,4 @@ tokio = { version = "1.47.1", features = ["rt", "rt-multi-thread"], optional = t
 rusqlite = { version = "0.33.0", optional = true }
 indicatif = { version = "0.17", optional = true }
 dirs-next = "2.0.0"
+env = "1.0.1"

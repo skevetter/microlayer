@@ -9,7 +9,6 @@ use std::io::{BufReader, Write};
 use std::path::Path;
 use std::process::Command;
 use tar::Archive;
-use walkdir;
 
 // ============================================================================
 // Data Structures
@@ -416,7 +415,7 @@ impl<'a> AssetInstaller<'a> {
 
         // Use system tar command to extract .tar.xz file
         let output = Command::new("tar")
-            .args(&[
+            .args([
                 "-xf",
                 archive_path.to_str().unwrap(),
                 "-C",
@@ -522,13 +521,10 @@ impl<'a> AssetVerifier<'a> {
 
     fn find_checksum_asset<'b>(&self, assets: &'b [Asset], asset: &Asset) -> Result<&'b Asset> {
         // First, try to find exact signature matches for the asset
-        let exact_sig_patterns = vec![format!("{}.asc", asset.name), format!("{}.sig", asset.name)];
+        let exact_sig_patterns = [format!("{}.asc", asset.name), format!("{}.sig", asset.name)];
 
         // Look for exact signature match first
-        if let Some(exact_match) = assets
-            .iter()
-            .find(|a| exact_sig_patterns.iter().any(|pattern| a.name == *pattern))
-        {
+        if let Some(exact_match) = assets.iter().find(|a| exact_sig_patterns.contains(&a.name)) {
             return Ok(exact_match);
         }
 

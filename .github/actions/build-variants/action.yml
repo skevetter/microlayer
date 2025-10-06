@@ -24,7 +24,7 @@ runs:
         else
           cargo build --release --target ${{ inputs.target }}
         fi
-        
+
         # Rename binary to picolayer-lite
         TARGET_DIR="target/${{ inputs.target }}/release"
         if [ -f "${TARGET_DIR}/picolayer" ]; then
@@ -40,7 +40,7 @@ runs:
         else
           cargo build --release --target ${{ inputs.target }} --features pkgx-integration
         fi
-        
+
         # Keep standard version as picolayer
         TARGET_DIR="target/${{ inputs.target }}/release"
         if [ -f "${TARGET_DIR}/picolayer" ]; then
@@ -51,7 +51,7 @@ runs:
       shell: bash
       run: |
         TARGET_DIR="target/${{ inputs.target }}/release"
-        
+
         # Check lite version
         LITE_SIZE=$(stat -c%s "${TARGET_DIR}/picolayer-lite" 2>/dev/null || stat -f%z "${TARGET_DIR}/picolayer-lite")
         echo "Lite version size: $LITE_SIZE bytes"
@@ -59,7 +59,7 @@ runs:
           echo "Error: Lite version exceeds 5MB"
           exit 1
         fi
-        
+
         # Check standard version
         STD_SIZE=$(stat -c%s "${TARGET_DIR}/picolayer" 2>/dev/null || stat -f%z "${TARGET_DIR}/picolayer")
         echo "Standard version size: $STD_SIZE bytes"

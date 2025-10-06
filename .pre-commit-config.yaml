@@ -43,3 +43,11 @@ repos:
     hooks:
       - id: commitizen
         stages: [commit-msg]
+  - repo: https://github.com/FeryET/pre-commit-rust
+    rev: v1.2.1
+    hooks:
+      - id: cargo-check
+      - id: clippy
+      - id: test
+      - id: fmt
+        files: \.rs$
