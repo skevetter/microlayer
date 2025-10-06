@@ -31,7 +31,7 @@ jobs:
         uses: ./.github/actions/build-release
 
       - name: Run tests
-        run: ./test.sh
+        run: ./hack/test.sh
 
       - name: Check binary size
         run: |

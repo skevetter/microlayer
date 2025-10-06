@@ -1,15 +1,15 @@
-name: 'Build Variants'
-description: 'Build both lite and standard variants'
+name: "Build Variants"
+description: "Build both lite and standard variants"
 inputs:
   target:
-    description: 'Target triple for cross-compilation'
+    description: "Target triple for cross-compilation"
     required: true
   use-cross:
-    description: 'Use cross for cross-compilation'
+    description: "Use cross for cross-compilation"
     required: false
-    default: 'false'
+    default: "false"
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Install cross
       if: inputs.use-cross == 'true'

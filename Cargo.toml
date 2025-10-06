@@ -18,7 +18,7 @@ flate2 = "1.1.4"
 hex = "0.4.3"
 pgp = "0.17.0"
 regex = "1.11.3"
-reqwest = { version = "0.12.23", features = ["blocking", "json"] }
+reqwest = { version = "0.12.23", features = ["blocking", "json", "rustls-tls-webpki-roots"], default-features = false }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 sha2 = "0.10.9"
