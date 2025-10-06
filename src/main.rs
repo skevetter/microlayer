@@ -71,15 +71,19 @@ enum Commands {
         #[arg(long, default_value = "false")]
         checksum: bool,
 
-        /// GPG public key for signature verification (can be a file path or key content)
+        /// GPG public key for signature verification (can be a URL, file path, or key content)
         #[arg(long)]
         gpg_key: Option<String>,
     },
 
-    /// Run a command using pkgx for dependency management
+    /// Run a command using pkgx
     Run {
-        /// Command to run (e.g., "python script.py", "node app.js")
-        command: String,
+        /// Tool specification (e.g., "python@3.10", "node@18", "python")
+        tool: String,
+
+        /// Arguments to pass to the tool
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
 
         /// Working directory for execution
         #[arg(long, default_value = ".")]
@@ -92,6 +96,14 @@ enum Commands {
         /// Force pkgx even if dependencies exist locally
         #[arg(long, default_value = "false")]
         force_pkgx: bool,
+
+        /// Delete installed packages after command execution
+        #[arg(long, default_value = "false", conflicts_with = "delete")]
+        ephemeral: bool,
+
+        /// Completely uninstall pkgx and remove all cache/data files
+        #[arg(long, default_value = "false", conflicts_with = "ephemeral")]
+        delete: bool,
     },
 }
 
@@ -150,12 +162,22 @@ fn main() -> Result<()> {
         }
 
         Commands::Run {
-            command,
+            tool,
+            args,
             working_dir,
             env,
             force_pkgx,
+            ephemeral,
+            delete,
         } => {
-            run::execute(&command, &working_dir, &env, force_pkgx)?;
+            // Handle delete flag - this is a standalone operation
+            if delete {
+                run::uninstall_pkgx()?;
+                return Ok(());
+            }
+
+            // Normal execution with optional ephemeral cleanup
+            run::execute(&tool, &args, &working_dir, &env, force_pkgx, ephemeral)?;
         }
     }
 

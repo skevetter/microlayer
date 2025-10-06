@@ -56,11 +56,11 @@ jobs:
       - name: Create archives
         run: |
           cd target/${{ matrix.target }}/release
-          
+
           # Create lite version archive
           tar czf picolayer-lite-${{ matrix.target }}.tar.gz picolayer-lite
           mv picolayer-lite-${{ matrix.target }}.tar.gz ../../../
-          
+
           # Create standard version archive
           tar czf picolayer-${{ matrix.target }}.tar.gz picolayer
           mv picolayer-${{ matrix.target }}.tar.gz ../../../
@@ -102,7 +102,7 @@ jobs:
             elif [ "$RELEASE_TYPE" = "rc" ]; then
               # Find the latest RC number
               LATEST_RC=$(git tag -l "v${VERSION}-rc.*" | sort -V | tail -1 | grep -oP 'rc\.\K\d+' || echo "0")
-              NEXT_RC=$((LATEST_RC + 1))
+              NEXT_RC=$(("$LATEST_RC" + 1))
               TAG="v${VERSION}-rc.${NEXT_RC}"
               PRERELEASE="true"
             else
@@ -118,8 +118,8 @@ jobs:
             fi
           fi
 
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "prerelease=${PRERELEASE}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
           echo "Release tag: ${TAG}"
           echo "Prerelease: ${PRERELEASE}"
 

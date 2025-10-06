@@ -84,9 +84,30 @@ picolayer gh-release pkgxdev/pkgx pkgx --version latest --checksum --gpg-key /pa
 
 ### Run commands with pkgx
 
+Run any version of any tool using pkgx (similar to `pkgx node@14 --version`):
+
 ```bash
+# Run specific versions
+picolayer run "python@3.11 --version"
+picolayer run "node@14 --version"
+
+# Run with working directory
 picolayer run "python script.py" --working-dir /path/to/project
+
+# Run with environment variables
+picolayer run "python app.py" --env "DEBUG=1" --env "PORT=8000"
+
+# Force pkgx library integration (when available)
+picolayer run "python script.py" --force-pkgx
 ```
+
+The `run` command automatically detects dependencies from your project files:
+- `package.json` → Node.js
+- `requirements.txt`, `pyproject.toml` → Python  
+- `Cargo.toml` → Rust
+- `go.mod` → Go
+- `Gemfile` → Ruby
+- And more...
 
 ## Docker Example
 

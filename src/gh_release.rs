@@ -7,7 +7,9 @@ use sha2::{Digest, Sha256};
 use std::fs::{self, File};
 use std::io::{BufReader, Write};
 use std::path::Path;
+use std::process::Command;
 use tar::Archive;
+use walkdir;
 
 // ============================================================================
 // Data Structures
@@ -83,7 +85,8 @@ impl Installer {
         let release = self.fetch_release(config.repo, config.version)?;
         println!("Installing from release: {}", release.tag_name);
 
-        let asset = self.select_asset(&release, config.filter)?;
+        let gpg_verification = config.checksum && config.gpg_key.is_some();
+        let asset = self.select_asset(&release.assets, config.filter, gpg_verification)?;
         println!("Selected asset: {}", asset.name);
 
         if config.checksum {
@@ -100,8 +103,18 @@ impl Installer {
         ReleaseClient::new(&self.client).fetch(repo, version)
     }
 
-    fn select_asset<'a>(&self, release: &'a Release, filter: Option<&str>) -> Result<&'a Asset> {
-        AssetSelector::new().select(&release.assets, filter)
+    fn select_asset<'a>(
+        &self,
+        assets: &'a [Asset],
+        filter: Option<&str>,
+        gpg_verification: bool,
+    ) -> Result<&'a Asset> {
+        let selector = AssetSelector::new();
+        if gpg_verification {
+            selector.select_with_signature(assets, filter)
+        } else {
+            selector.select(assets, filter)
+        }
     }
 
     fn verify_asset(&self, assets: &[Asset], asset: &Asset, gpg_key: Option<&str>) -> Result<()> {
@@ -179,6 +192,53 @@ impl AssetSelector {
         self.select_by_platform(assets)
             .or_else(|| self.select_any_archive(assets))
             .context("No suitable asset found for this platform")
+    }
+
+    fn select_with_signature<'a>(
+        &self,
+        assets: &'a [Asset],
+        filter: Option<&str>,
+    ) -> Result<&'a Asset> {
+        if let Some(pattern) = filter {
+            return self.select_by_filter(assets, pattern);
+        }
+
+        // First try to find a platform-specific asset that has a signature
+        if let Some(asset) = self.select_by_platform_with_signature(assets) {
+            return Ok(asset);
+        }
+
+        // Fall back to regular selection
+        self.select_by_platform(assets)
+            .or_else(|| self.select_any_archive(assets))
+            .context("No suitable asset found for this platform")
+    }
+
+    fn select_by_platform_with_signature<'a>(&self, assets: &'a [Asset]) -> Option<&'a Asset> {
+        let arch = std::env::consts::ARCH;
+        let os = std::env::consts::OS;
+
+        let arch_patterns = self.get_arch_patterns(arch);
+        let os_patterns = self.get_os_patterns(os);
+
+        assets.iter().find(|asset| {
+            let name_lower = asset.name.to_lowercase();
+            let has_arch = arch_patterns
+                .iter()
+                .any(|p| name_lower.contains(&p.to_lowercase()));
+            let has_os = os_patterns
+                .iter()
+                .any(|p| name_lower.contains(&p.to_lowercase()));
+            let is_archive = self.is_archive(&name_lower);
+
+            // Check if there's a corresponding signature file
+            let has_signature = assets.iter().any(|sig_asset| {
+                sig_asset.name == format!("{}.asc", asset.name)
+                    || sig_asset.name == format!("{}.sig", asset.name)
+            });
+
+            has_arch && has_os && is_archive && has_signature
+        })
     }
 
     fn select_by_filter<'a>(&self, assets: &'a [Asset], pattern: &str) -> Result<&'a Asset> {
@@ -286,6 +346,27 @@ impl<'a> AssetInstaller<'a> {
         bin_location: &str,
     ) -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
+
+        // Determine archive format and extract accordingly
+        if self.is_tar_xz_archive(archive_data) {
+            self.extract_tar_xz(archive_data, binary_names, bin_location, &temp_dir)
+        } else {
+            self.extract_tar_gz(archive_data, binary_names, bin_location, &temp_dir)
+        }
+    }
+
+    fn is_tar_xz_archive(&self, data: &[u8]) -> bool {
+        // XZ files start with 0xFD, '7', 'z', 'X', 'Z', 0x00
+        data.len() >= 6 && data[0] == 0xFD && &data[1..6] == b"7zXZ\x00"
+    }
+
+    fn extract_tar_gz(
+        &self,
+        archive_data: &[u8],
+        binary_names: &[String],
+        bin_location: &str,
+        temp_dir: &tempfile::TempDir,
+    ) -> Result<()> {
         let archive_path = temp_dir.path().join("download.tar.gz");
 
         let mut file = File::create(&archive_path)?;
@@ -309,6 +390,83 @@ impl<'a> AssetInstaller<'a> {
 
             if binary_names.iter().any(|name| name == &file_name) {
                 self.install_binary(&mut entry, &file_name, bin_location)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn extract_tar_xz(
+        &self,
+        archive_data: &[u8],
+        binary_names: &[String],
+        bin_location: &str,
+        temp_dir: &tempfile::TempDir,
+    ) -> Result<()> {
+        let archive_path = temp_dir.path().join("download.tar.xz");
+        let extract_dir = temp_dir.path().join("extracted");
+
+        // Write the archive to a temporary file
+        let mut file = File::create(&archive_path)?;
+        file.write_all(archive_data)?;
+
+        // Create extraction directory
+        fs::create_dir_all(&extract_dir)?;
+        fs::create_dir_all(bin_location).context("Failed to create bin directory")?;
+
+        // Use system tar command to extract .tar.xz file
+        let output = Command::new("tar")
+            .args(&[
+                "-xf",
+                archive_path.to_str().unwrap(),
+                "-C",
+                extract_dir.to_str().unwrap(),
+            ])
+            .output()
+            .context("Failed to execute tar command")?;
+
+        if !output.status.success() {
+            anyhow::bail!(
+                "tar extraction failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        // Find and copy the binary files
+        self.find_and_install_binaries(&extract_dir, binary_names, bin_location)?;
+
+        Ok(())
+    }
+
+    fn find_and_install_binaries(
+        &self,
+        extract_dir: &std::path::Path,
+        binary_names: &[String],
+        bin_location: &str,
+    ) -> Result<()> {
+        for entry in walkdir::WalkDir::new(extract_dir) {
+            let entry = entry?;
+            if entry.file_type().is_file() {
+                let file_name = entry.file_name().to_str().unwrap_or("").to_string();
+
+                if binary_names.iter().any(|name| name == &file_name) {
+                    let source_path = entry.path();
+                    let dest_path = std::path::Path::new(bin_location).join(&file_name);
+
+                    fs::copy(source_path, &dest_path)
+                        .with_context(|| format!("Failed to copy binary: {}", file_name))?;
+
+                    // Make the binary executable
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::PermissionsExt;
+                        let mut perms = fs::metadata(&dest_path)?.permissions();
+                        perms.set_mode(0o755);
+                        fs::set_permissions(&dest_path, perms)?;
+                    }
+
+                    println!("Installed: {} -> {}", file_name, dest_path.display());
+                }
             }
         }
 
@@ -363,6 +521,18 @@ impl<'a> AssetVerifier<'a> {
     }
 
     fn find_checksum_asset<'b>(&self, assets: &'b [Asset], asset: &Asset) -> Result<&'b Asset> {
+        // First, try to find exact signature matches for the asset
+        let exact_sig_patterns = vec![format!("{}.asc", asset.name), format!("{}.sig", asset.name)];
+
+        // Look for exact signature match first
+        if let Some(exact_match) = assets
+            .iter()
+            .find(|a| exact_sig_patterns.iter().any(|pattern| a.name == *pattern))
+        {
+            return Ok(exact_match);
+        }
+
+        // If no exact signature match, fall back to the existing logic
         let patterns = self.build_checksum_patterns(&asset.name);
 
         assets
@@ -518,8 +688,18 @@ impl<'a> GpgVerifier<'a> {
         let public_key = self.load_public_key(gpg_key_content)?;
 
         println!("Parsing signature...");
-        let signature = DetachedSignature::from_bytes(Cursor::new(&sig_data[..]))
-            .context("Failed to parse signature")?;
+        let signature = if sig_data.starts_with(b"-----BEGIN PGP SIGNATURE-----") {
+            // ASCII-armored signature
+            let sig_str =
+                String::from_utf8(sig_data).context("Failed to convert signature to string")?;
+            let (sig, _headers) = DetachedSignature::from_string(&sig_str)
+                .context("Failed to parse ASCII-armored signature")?;
+            sig
+        } else {
+            // Binary signature
+            DetachedSignature::from_bytes(Cursor::new(&sig_data[..]))
+                .context("Failed to parse binary signature")?
+        };
 
         println!("Verifying signature...");
         signature
@@ -548,7 +728,25 @@ impl<'a> GpgVerifier<'a> {
     fn load_public_key(&self, key_content: &str) -> Result<pgp::composed::SignedPublicKey> {
         use pgp::composed::{Deserializable, SignedPublicKey};
 
-        let key_data = if std::path::Path::new(key_content).exists() {
+        let key_data = if key_content.starts_with("http://") || key_content.starts_with("https://")
+        {
+            // Download GPG key from URL
+            println!("Downloading GPG public key from URL...");
+            let response = self
+                .client
+                .get(key_content)
+                .header("User-Agent", "picolayer")
+                .send()
+                .context("Failed to download GPG public key")?;
+
+            if !response.status().is_success() {
+                anyhow::bail!("Failed to download GPG public key: {}", response.status());
+            }
+
+            response
+                .text()
+                .context("Failed to read GPG public key response")?
+        } else if std::path::Path::new(key_content).exists() {
             std::fs::read_to_string(key_content).context("Failed to read GPG key file")?
         } else {
             key_content.to_string()

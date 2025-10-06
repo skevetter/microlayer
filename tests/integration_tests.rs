@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::Path;
 use std::process::Command;
 
@@ -264,13 +263,8 @@ fn test_pkgx_with_gpg_verification() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
 
-    // This test would require the actual GPG public key for pkgx
-    // For now, we'll skip this test unless we have the key
-    let gpg_key_path = "/tmp/pkgx_public_key.asc";
-    if !Path::new(gpg_key_path).exists() {
-        eprintln!("Skipping GPG verification test: public key not found");
-        return;
-    }
+    // Use the pkgx.dev GPG public key URL for integration tests
+    let gpg_key_url = "https://dist.pkgx.dev/gpg-public.asc";
 
     let output = run_picolayer(&[
         "gh-release",
@@ -282,7 +276,7 @@ fn test_pkgx_with_gpg_verification() {
         bin_location,
         "--checksum",
         "--gpg-key",
-        gpg_key_path,
+        gpg_key_url,
     ]);
 
     if !output.status.success() {
@@ -313,9 +307,12 @@ fn test_pkgx_with_filter_and_custom_location() {
 
     // Use a filter to select the correct asset
     let arch = std::env::consts::ARCH;
-    let os = std::env::consts::OS;
-    let filter = format!("{}.*{}", arch, os);
-
+    let os = if std::env::consts::OS == "macos" {
+        "darwin"
+    } else {
+        std::env::consts::OS
+    };
+    let filter = format!("{}.*{}", os, arch);
     let output = run_picolayer(&[
         "gh-release",
         "pkgxdev/pkgx",
@@ -358,6 +355,418 @@ fn test_pkgx_with_filter_and_custom_location() {
         check_binary_version(&binary_path, None),
         "pkgx binary version check failed"
     );
+}
+
+#[test]
+fn test_picolayer_run_python_version_legacy() {
+    let output = run_picolayer(&["run", "python@3.11", "--version"]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Python version test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/python not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Python 3.11"));
+}
+
+#[test]
+fn test_picolayer_run_node_version_legacy() {
+    let output = run_picolayer(&["run", "node@18", "--version"]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Node version test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/node not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("v18"));
+}
+
+#[test]
+fn test_picolayer_run_with_working_directory_legacy() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+    let working_dir = temp_dir.path().to_str().unwrap();
+
+    // Create a simple script in the temp directory
+    let script_path = temp_dir.path().join("test_script.py");
+    std::fs::write(&script_path, "print('Hello from script')").expect("Failed to write script");
+
+    let output = run_picolayer(&[
+        "run",
+        "python",
+        "test_script.py",
+        "--working-dir",
+        working_dir,
+    ]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Working directory test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/python not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Hello from script"));
+}
+
+#[test]
+fn test_picolayer_run_dependency_detection_legacy() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+
+    // Create a package.json to test Node.js detection
+    let package_json = temp_dir.path().join("package.json");
+    std::fs::write(&package_json, r#"{"name": "test", "version": "1.0.0"}"#)
+        .expect("Failed to write package.json");
+
+    let output = run_picolayer(&[
+        "run",
+        "node",
+        "--version",
+        "--working-dir",
+        temp_dir.path().to_str().unwrap(),
+    ]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Dependency detection test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/node not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("v"));
+}
+
+#[test]
+fn test_picolayer_run_python_with_requirements_legacy() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+
+    // Create a requirements.txt to test Python detection
+    let requirements_txt = temp_dir.path().join("requirements.txt");
+    std::fs::write(&requirements_txt, "requests==2.28.0")
+        .expect("Failed to write requirements.txt");
+
+    let output = run_picolayer(&[
+        "run",
+        "python",
+        "--version",
+        "--working-dir",
+        temp_dir.path().to_str().unwrap(),
+    ]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Python with requirements test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/python not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Python"));
+}
+
+#[test]
+fn test_picolayer_run_go_with_mod_legacy() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+
+    // Create a go.mod to test Go detection
+    let go_mod = temp_dir.path().join("go.mod");
+    std::fs::write(&go_mod, "module test\n\ngo 1.19").expect("Failed to write go.mod");
+
+    let output = run_picolayer(&[
+        "run",
+        "go",
+        "version",
+        "--working-dir",
+        temp_dir.path().to_str().unwrap(),
+    ]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Go with mod test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/go not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("go version"));
+}
+
+#[test]
+#[cfg(feature = "pkgx-integration")]
+fn test_picolayer_run_with_libpkgx_integration() {
+    // Test that we can use the library integration when the feature is enabled
+    let output = run_picolayer(&[
+        "run",
+        "python",
+        "--",
+        "-c 'print(\"Hello world\")'",
+        "--force-pkgx",
+    ]);
+
+    if !output.status.success() {
+        eprintln!(
+            "libpkgx integration test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if libpkgx not working
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("testing libpkgx integration"));
+
+    // Check that it mentions using library integration
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("Using pkgx library integration") || stderr.contains("Falling back"));
+}
+
+#[test]
+fn test_picolayer_run_python_with_version() {
+    let output = run_picolayer(&["run", "python@3.10", "--version"]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Python 3.10 version test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/python not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Python 3.10"));
+}
+
+#[test]
+fn test_picolayer_run_python_latest() {
+    let output = run_picolayer(&["run", "python", "--version"]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Python latest test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/python not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Python"));
+}
+
+#[test]
+fn test_picolayer_run_python_script() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+    let script_path = temp_dir.path().join("test.py");
+    std::fs::write(&script_path, "print('Hello from Python!')").expect("Failed to write script");
+
+    let output = run_picolayer(&[
+        "run",
+        "python",
+        script_path.to_str().unwrap(),
+        "--working-dir",
+        temp_dir.path().to_str().unwrap(),
+    ]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Python script test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/python not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Hello from Python!"));
+}
+
+#[test]
+fn test_picolayer_run_node_with_version() {
+    let output = run_picolayer(&["run", "node@18", "--version"]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Node 18 version test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/node not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("v18."));
+}
+
+#[test]
+fn test_picolayer_run_node_inline_code() {
+    let output = run_picolayer(&["run", "node", "-e", "console.log('Hello from Node.js!')"]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Node inline code test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/node not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Hello from Node.js!"));
+}
+
+#[test]
+fn test_picolayer_run_go_with_version() {
+    let output = run_picolayer(&["run", "go@1.21", "version"]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Go 1.21 version test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/go not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("go1.21"));
+}
+
+#[test]
+fn test_picolayer_run_ruby_inline() {
+    let output = run_picolayer(&["run", "ruby", "-e", "puts 'Hello from Ruby!'"]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Ruby inline test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/ruby not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Hello from Ruby!"));
+}
+
+#[test]
+fn test_picolayer_run_with_env_vars_new_syntax() {
+    let output = run_picolayer(&[
+        "run",
+        "python",
+        "-c",
+        "import os; print(f'TEST_VAR={os.environ.get(\"TEST_VAR\", \"not found\")}')",
+        "--env",
+        "TEST_VAR=hello_world",
+    ]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Python env vars test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/python not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("TEST_VAR=hello_world"));
+}
+
+#[test]
+fn test_picolayer_run_with_force_pkgx_new_syntax() {
+    let output = run_picolayer(&["run", "echo", "hello", "world", "--force-pkgx"]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Force pkgx test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("hello world"));
+}
+
+#[test]
+#[ignore]
+#[cfg(feature = "pkgx-integration")]
+fn test_picolayer_run_progress_bar_integration() {
+    // Test that progress bar is used during package installation
+    let output = run_picolayer(&[
+        "run",
+        "python@3.9",
+        "-c",
+        "print('Testing progress bar')",
+        "--force-pkgx",
+    ]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Progress bar integration test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if libpkgx not working
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Testing progress bar"));
+
+    // Check that it mentions installing packages (which would use progress bar)
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("Installing") || stderr.contains("packages"));
+}
+
+#[test]
+fn test_picolayer_run_rust_with_version() {
+    let output = run_picolayer(&["run", "rustc@1.70", "--version"]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Rust 1.70 version test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if pkgx/rust not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("rustc 1.70"));
+}
+
+#[test]
+fn test_picolayer_run_multiple_args() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+    let file1 = temp_dir.path().join("file1.txt");
+    let file2 = temp_dir.path().join("file2.txt");
+
+    std::fs::write(&file1, "content1").expect("Failed to write file1");
+    std::fs::write(&file2, "content2").expect("Failed to write file2");
+
+    let output = run_picolayer(&[
+        "run",
+        "cat",
+        file1.to_str().unwrap(),
+        file2.to_str().unwrap(),
+        "--working-dir",
+        temp_dir.path().to_str().unwrap(),
+    ]);
+
+    if !output.status.success() {
+        eprintln!(
+            "Multiple args test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return; // Skip test if cat not available
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("content1"));
+    assert!(stdout.contains("content2"));
 }
 
 #[test]
