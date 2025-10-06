@@ -189,7 +189,11 @@ fn test_pkgx_with_filter_and_custom_location() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
 
-    let arch = std::env::consts::ARCH;
+    let arch = if std::env::consts::ARCH == "x86_64" {
+        "x86-64"
+    } else {
+        std::env::consts::ARCH
+    };
     let os = if std::env::consts::OS == "macos" {
         "darwin"
     } else {
