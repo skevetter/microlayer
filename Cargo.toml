@@ -8,8 +8,7 @@ license = "MIT"
 repository = "https://github.com/skevetter/picolayer"
 
 [features]
-default = ["pkgx-integration"]
-pkgx-integration = ["libpkgx", "tokio", "rusqlite", "indicatif"]
+default = []
 
 [dependencies]
 anyhow = "1.0.100"
@@ -25,9 +24,5 @@ sha2 = "0.10.9"
 tar = "0.4.44"
 tempfile = "3.23.0"
 walkdir = "2.5.0"
-libpkgx = { version = "0.7.0", optional = true }
-tokio = { version = "1.47.1", features = ["rt", "rt-multi-thread"], optional = true }
-rusqlite = { version = "0.33.0", optional = true }
-indicatif = { version = "0.17", optional = true }
 dirs-next = "2.0.0"
 env = "1.0.1"

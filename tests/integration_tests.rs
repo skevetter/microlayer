@@ -505,34 +505,6 @@ fn test_picolayer_run_go_with_mod_legacy() {
 }
 
 #[test]
-#[cfg(feature = "pkgx-integration")]
-fn test_picolayer_run_with_libpkgx_integration() {
-    // Test that we can use the library integration when the feature is enabled
-    let output = run_picolayer(&[
-        "run",
-        "python",
-        "--",
-        "-c 'print(\"Hello world\")'",
-        "--force-pkgx",
-    ]);
-
-    if !output.status.success() {
-        eprintln!(
-            "libpkgx integration test failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        return; // Skip test if libpkgx not working
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("testing libpkgx integration"));
-
-    // Check that it mentions using library integration
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("Using pkgx library integration") || stderr.contains("Falling back"));
-}
-
-#[test]
 fn test_picolayer_run_python_with_version() {
     let output = run_picolayer(&["run", "python@3.10", "--version"]);
 
@@ -691,35 +663,6 @@ fn test_picolayer_run_with_force_pkgx_new_syntax() {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("hello world"));
-}
-
-#[test]
-#[ignore]
-#[cfg(feature = "pkgx-integration")]
-fn test_picolayer_run_progress_bar_integration() {
-    // Test that progress bar is used during package installation
-    let output = run_picolayer(&[
-        "run",
-        "python@3.9",
-        "-c",
-        "print('Testing progress bar')",
-        "--force-pkgx",
-    ]);
-
-    if !output.status.success() {
-        eprintln!(
-            "Progress bar integration test failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        return; // Skip test if libpkgx not working
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Testing progress bar"));
-
-    // Check that it mentions installing packages (which would use progress bar)
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("Installing") || stderr.contains("packages"));
 }
 
 #[test]
