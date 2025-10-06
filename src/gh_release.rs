@@ -10,7 +10,6 @@ use std::path::Path;
 use std::process::Command;
 use tar::Archive;
 
-
 #[derive(Debug, Deserialize)]
 struct Release {
     tag_name: String,
@@ -34,7 +33,6 @@ struct InstallConfig<'a> {
     gpg_key: Option<&'a str>,
 }
 
-
 /// Install binaries from a GitHub release
 pub fn install(
     repo: &str,
@@ -57,7 +55,6 @@ pub fn install(
 
     Installer::new().install(config)
 }
-
 
 struct Installer {
     client: Client,
@@ -121,7 +118,6 @@ impl Installer {
     }
 }
 
-
 struct ReleaseClient<'a> {
     client: &'a Client,
 }
@@ -159,7 +155,6 @@ impl<'a> ReleaseClient<'a> {
         }
     }
 }
-
 
 struct AssetSelector;
 
@@ -284,7 +279,6 @@ impl AssetSelector {
             || filename.ends_with(".zip")
     }
 }
-
 
 struct AssetInstaller<'a> {
     client: &'a Client,
@@ -476,7 +470,6 @@ impl<'a> AssetInstaller<'a> {
     }
 }
 
-
 struct AssetVerifier<'a> {
     client: &'a Client,
 }
@@ -636,7 +629,6 @@ impl<'a> AssetVerifier<'a> {
     }
 }
 
-
 struct GpgVerifier<'a> {
     client: &'a Client,
 }
@@ -730,7 +722,6 @@ impl<'a> GpgVerifier<'a> {
         Ok(public_key)
     }
 }
-
 
 fn get_filename_variants(filename: &str) -> Vec<String> {
     let compression_extensions = [
