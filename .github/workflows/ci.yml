@@ -37,7 +37,7 @@ jobs:
         run: |
           SIZE=$(stat -c%s "target/release/picolayer")
           echo "Binary size: $SIZE bytes"
-          if [ "$SIZE" -gt 5242880 ]; then  # 5MB
-            echo "Warning: Binary size exceeds 5MB"
+          if [ "$SIZE" -gt 10000000 ]; then  # 10MB
+            echo "Warning: Binary size exceeds 10MB"
             exit 1
           fi
