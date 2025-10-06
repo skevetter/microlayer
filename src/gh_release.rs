@@ -811,6 +811,7 @@ fn parse_checksum_line(content: &str, asset_name: &str) -> Result<String> {
         }
 
         if line.contains(asset_name) {
+            #[allow(clippy::collapsible_if)]
             if let Some(hash) = line.split_whitespace().next() {
                 return Ok(hash.to_string());
             }
