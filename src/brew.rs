@@ -3,7 +3,6 @@ use std::process::{Command, Stdio};
 
 /// Install packages using Homebrew
 pub fn install(packages: &[String]) -> Result<()> {
-    // Check if brew is available
     let brew_available = Command::new("brew")
         .arg("--version")
         .stdout(Stdio::null())
@@ -21,7 +20,6 @@ pub fn install(packages: &[String]) -> Result<()> {
 
     println!("Installing packages with brew: {}", packages.join(", "));
 
-    // Update brew
     println!("Updating Homebrew...");
     let status = Command::new("brew")
         .arg("update")
@@ -37,7 +35,6 @@ pub fn install(packages: &[String]) -> Result<()> {
         );
     }
 
-    // Install packages
     println!("Installing packages...");
     let status = Command::new("brew")
         .arg("install")
@@ -54,7 +51,6 @@ pub fn install(packages: &[String]) -> Result<()> {
         );
     }
 
-    // Clean up
     println!("Cleaning up Homebrew cache...");
     let _ = Command::new("brew")
         .arg("cleanup")

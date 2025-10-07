@@ -1,20 +1,16 @@
 use anyhow::{Context, Result};
+use std::collections::HashMap;
 #[cfg(not(target_os = "macos"))]
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-#[cfg(feature = "pkgx-integration")]
-use std::collections::HashMap;
-
-/// Completely uninstall pkgx and remove all associated files
 pub fn uninstall_pkgx() -> Result<()> {
     println!("Uninstalling pkgx and removing all associated files...");
 
     let mut removed_count = 0;
     let mut error_count = 0;
 
-    // 1. Remove pkgx binaries from /usr/local/bin
     let bin_paths = vec!["/usr/local/bin/pkgx", "/usr/local/bin/pkgm"];
 
     for bin_path in bin_paths {
@@ -33,7 +29,6 @@ pub fn uninstall_pkgx() -> Result<()> {
         }
     }
 
-    // 2. Remove main pkgx directory (~/.pkgx)
     if let Some(home_dir) = dirs_next::home_dir() {
         let pkgx_dir = home_dir.join(".pkgx");
         if pkgx_dir.exists() {
@@ -50,7 +45,6 @@ pub fn uninstall_pkgx() -> Result<()> {
         }
     }
 
-    // 3. Remove platform-specific cache and data directories
     let cache_data_paths = get_platform_specific_paths()?;
 
     for path in cache_data_paths {
@@ -74,7 +68,6 @@ pub fn uninstall_pkgx() -> Result<()> {
         }
     }
 
-    // Summary
     println!("Uninstall Summary:");
     println!("Successfully removed: {} items", removed_count);
     if error_count > 0 {
@@ -97,15 +90,12 @@ fn get_platform_specific_paths() -> Result<Vec<PathBuf>> {
     if let Some(home_dir) = dirs_next::home_dir() {
         #[cfg(target_os = "macos")]
         {
-            // macOS specific paths
             paths.push(home_dir.join("Library/Caches/pkgx"));
             paths.push(home_dir.join("Library/Application Support/pkgx"));
         }
 
         #[cfg(not(target_os = "macos"))]
         {
-            // Non-macOS (Linux, etc.) paths
-            // XDG_CACHE_HOME or fallback to ~/.cache
             let cache_dir = if let Ok(xdg_cache) = env::var("XDG_CACHE_HOME") {
                 PathBuf::from(xdg_cache)
             } else {
@@ -113,7 +103,6 @@ fn get_platform_specific_paths() -> Result<Vec<PathBuf>> {
             };
             paths.push(cache_dir.join("pkgx"));
 
-            // XDG_DATA_HOME or fallback to ~/.local/share
             let data_dir = if let Ok(xdg_data) = env::var("XDG_DATA_HOME") {
                 PathBuf::from(xdg_data)
             } else {
@@ -126,7 +115,6 @@ fn get_platform_specific_paths() -> Result<Vec<PathBuf>> {
     Ok(paths)
 }
 
-/// Execute a command using pkgx for dependency management
 pub fn execute(
     tool: &str,
     args: &[String],
@@ -135,13 +123,11 @@ pub fn execute(
     _force_pkgx: bool,
     ephemeral: bool,
 ) -> Result<()> {
-    // Change to working directory
     let working_path = Path::new(working_dir);
     if !working_path.exists() {
         anyhow::bail!("Working directory does not exist: {}", working_dir);
     }
 
-    // Parse tool specification (e.g., "python@3.10" or "python")
     let (tool_name, version_spec) = parse_tool_spec(tool);
 
     println!(
@@ -156,7 +142,6 @@ pub fn execute(
         println!("Ephemeral mode: packages will be removed after execution");
     }
 
-    // Parse environment variables
     let mut env_map = Vec::new();
     for env_var in env_vars {
         if let Some((key, value)) = env_var.split_once('=') {
@@ -169,9 +154,8 @@ pub fn execute(
         }
     }
 
-    #[cfg(feature = "pkgx-integration")]
-    {
-        if _force_pkgx || !check_pkgx_binary() {
+    if _force_pkgx || !check_pkgx_binary() {
+        {
             return execute_with_pkgx_library(
                 &tool_name,
                 &version_spec,
@@ -194,7 +178,6 @@ fn parse_tool_spec(tool: &str) -> (String, String) {
     }
 }
 
-// Map tool name to proper project name
 fn map_tool_to_project(tool_name: &str) -> String {
     match tool_name {
         "python" | "python3" | "pip" | "pip3" => "python.org".to_string(),
@@ -208,14 +191,10 @@ fn map_tool_to_project(tool_name: &str) -> String {
         "git" => "git-scm.org".to_string(),
         "deno" => "deno.land".to_string(),
         "bun" => "bun.sh".to_string(),
-        _ => {
-            // For unknown tools, assume it might already be a project name
-            tool_name.to_string() // Use as-is
-        }
+        _ => tool_name.to_string(),
     }
 }
 
-#[cfg(feature = "pkgx-integration")]
 fn execute_with_pkgx_library(
     tool_name: &str,
     version_spec: &str,
@@ -226,7 +205,6 @@ fn execute_with_pkgx_library(
 ) -> Result<()> {
     println!("Using pkgx library integration...");
 
-    // Try to use libpkgx functionality with fallback to binary
     match try_libpkgx_execution(
         tool_name,
         version_spec,
@@ -247,7 +225,6 @@ fn execute_with_pkgx_library(
     }
 }
 
-#[cfg(feature = "pkgx-integration")]
 fn try_libpkgx_execution(
     tool_name: &str,
     version_spec: &str,
@@ -262,10 +239,8 @@ fn try_libpkgx_execution(
         anyhow::bail!("No arguments provided for tool: {}", tool_name);
     }
 
-    // Map tool name to proper project name
     let project_name = map_tool_to_project(tool_name);
 
-    // Create tool specification for pkgx
     let tool_spec = if version_spec == "latest" {
         project_name.clone()
     } else {
@@ -274,30 +249,41 @@ fn try_libpkgx_execution(
 
     println!("Resolving package: {}", tool_spec);
 
-    // Set up environment with current variables
     let mut cmd_env = HashMap::new();
 
-    // Get current environment
     for (key, value) in env::vars() {
+        // Overwrite Go environment variables that might be set by Mise or other shellenv tools
+        if tool_name == "go" && (key == "GOROOT" || key == "GOPATH") {
+            continue;
+        }
         cmd_env.insert(key, value);
     }
 
-    // Add user-provided environment variables
     for (key, value) in env_map {
         cmd_env.insert(key.clone(), value.clone());
     }
 
-    // Resolve the single tool with libpkgx and get installation info
     let mut paths_to_cleanup = Vec::new();
 
     let execution_result = match resolve_package_with_libpkgx(&[tool_spec]) {
         Ok((pkgx_env, installations)) => {
-            // Merge pkgx environment with existing environment
             for (key, value) in pkgx_env {
                 cmd_env.insert(key, value);
             }
 
-            // Show installation paths and collect cleanup paths if ephemeral
+            // Overwrite GOROOT for Go installations due to conflicts with Mise or other shellenv tools
+            if tool_name == "go" {
+                for installation in &installations {
+                    if installation.pkg.project == project_name {
+                        cmd_env.insert(
+                            "GOROOT".to_string(),
+                            installation.path.to_string_lossy().to_string(),
+                        );
+                        break;
+                    }
+                }
+            }
+
             for installation in &installations {
                 if installation.pkg.project == project_name {
                     println!("Package installed at: {}", installation.path.display());
@@ -306,7 +292,6 @@ fn try_libpkgx_execution(
                         paths_to_cleanup.push(installation.path.clone());
                     }
 
-                    // Try to find the specific executable
                     let bin_paths = vec!["bin", "sbin"];
                     for bin_dir in bin_paths {
                         let executable_path = installation.path.join(bin_dir).join(tool_name);
@@ -320,24 +305,20 @@ fn try_libpkgx_execution(
 
             println!("Successfully resolved package with libpkgx");
 
-            // Execute the command
             let mut cmd = Command::new(tool_name);
             cmd.args(args);
 
             cmd.current_dir(working_path);
 
-            // Set environment variables
             cmd.env_clear();
             for (key, value) in &cmd_env {
                 cmd.env(key, value);
             }
 
-            // Inherit stdio for interactive execution
             cmd.stdout(Stdio::inherit());
             cmd.stderr(Stdio::inherit());
             cmd.stdin(Stdio::inherit());
 
-            // Execute the command
             let status = cmd
                 .status()
                 .context("Failed to execute command with libpkgx")?;
@@ -357,7 +338,6 @@ fn try_libpkgx_execution(
         }
     };
 
-    // Cleanup ephemeral installations regardless of execution result
     if ephemeral && !paths_to_cleanup.is_empty() {
         println!("Cleaning up ephemeral installations...");
         for path in paths_to_cleanup {
@@ -373,7 +353,6 @@ fn try_libpkgx_execution(
     execution_result
 }
 
-#[cfg(feature = "pkgx-integration")]
 fn cleanup_installation(path: &PathBuf) -> Result<()> {
     if path.exists() {
         if path.is_dir() {
@@ -387,18 +366,15 @@ fn cleanup_installation(path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-#[cfg(feature = "pkgx-integration")]
 fn resolve_package_with_libpkgx(
     dependencies: &[String],
 ) -> Result<(HashMap<String, String>, Vec<libpkgx::types::Installation>)> {
-    // Create a Tokio runtime for async libpkgx operations
     let rt = tokio::runtime::Runtime::new()
         .context("Failed to create Tokio runtime for libpkgx operations")?;
 
     rt.block_on(async { resolve_dependencies_async(dependencies).await })
 }
 
-#[cfg(feature = "pkgx-integration")]
 async fn resolve_dependencies_async(
     dependencies: &[String],
 ) -> Result<(HashMap<String, String>, Vec<libpkgx::types::Installation>)> {
@@ -409,7 +385,6 @@ async fn resolve_dependencies_async(
     use std::collections::HashMap;
     use std::sync::Arc;
 
-    // Real progress bar implementation
     struct ToolProgressBar {
         bar: indicatif::ProgressBar,
     }
@@ -437,14 +412,11 @@ async fn resolve_dependencies_async(
         }
     }
 
-    // Initialize libpkgx configuration
     let config = Config::new().context("Failed to initialize libpkgx config")?;
 
-    // Create database directory if it doesn't exist
     std::fs::create_dir_all(config.pantry_db_file.parent().unwrap())?;
     let mut conn = rusqlite::Connection::open(&config.pantry_db_file)?;
 
-    // Sync pantry database if needed
     if sync::should(&config).map_err(|e| anyhow::anyhow!("{}", e))? {
         println!("Syncing pkgx pantry database...");
         sync::ensure(&config, &mut conn)
@@ -453,8 +425,6 @@ async fn resolve_dependencies_async(
     }
 
     let mut resolved_env = HashMap::new();
-
-    // Convert dependency strings to PackageReq objects
     let mut package_reqs = Vec::new();
     for dep in dependencies {
         match PackageReq::parse(dep) {
@@ -470,19 +440,16 @@ async fn resolve_dependencies_async(
         return Ok((resolved_env, Vec::new()));
     }
 
-    // Hydrate dependencies (resolve dependency graph)
     let hydrated_packages = hydrate::hydrate(&package_reqs, |project| {
         pantry_db::deps_for_project(&project, &conn)
     })
     .await
     .map_err(|e| anyhow::anyhow!("Failed to hydrate dependencies: {}", e))?;
 
-    // Resolve packages to specific versions and installations
     let resolution = resolve::resolve(&hydrated_packages, &config)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to resolve packages: {}", e))?;
 
-    // Install any pending packages
     let mut installations = resolution.installed;
     if !resolution.pending.is_empty() {
         println!(
@@ -500,15 +467,12 @@ async fn resolve_dependencies_async(
         installations.extend(installed);
     }
 
-    // Get environment variables from installed packages
     let env_map = libpkgx::env::map(&installations);
     let platform_env = libpkgx::env::mix(env_map);
     let runtime_env = libpkgx::env::mix_runtime(&platform_env, &installations, &conn)
         .map_err(|e| anyhow::anyhow!("Failed to mix runtime environment: {}", e))?;
 
-    // Convert platform-aware environment keys to strings
     for (key, value) in runtime_env {
-        // Remove shell variable expansion syntax for direct execution
         let cleaned_value = clean_shell_expansion(&value, &key.to_string());
         resolved_env.insert(key.to_string(), cleaned_value);
     }
@@ -520,7 +484,6 @@ async fn resolve_dependencies_async(
     Ok((resolved_env, installations))
 }
 
-#[cfg(feature = "pkgx-integration")]
 fn clean_shell_expansion(value: &str, key: &str) -> String {
     use regex::Regex;
 
@@ -552,7 +515,6 @@ fn execute_with_pkgx_binary(
     working_path: &Path,
     env_map: &[(String, String)],
 ) -> Result<()> {
-    // Check if pkgx is available
     let pkgx_available = check_pkgx_binary();
 
     if !pkgx_available {
@@ -562,37 +524,29 @@ fn execute_with_pkgx_binary(
         );
     }
 
-    // Map tool name to project name for binary execution too
     let project_name = map_tool_to_project(tool_name);
 
-    // Execute command with pkgx
     let mut cmd = Command::new("pkgx");
 
-    // Add tool specification
     if version_spec == "latest" {
         cmd.arg(format!("+{}", project_name));
     } else {
         cmd.arg(format!("+{}@{}", project_name, version_spec));
     }
 
-    // Add the actual command
     cmd.arg(tool_name);
     cmd.args(args);
 
-    // Set working directory
     cmd.current_dir(working_path);
 
-    // Add environment variables
     for (key, value) in env_map {
         cmd.env(key, value);
     }
 
-    // Inherit stdio so output is visible
     cmd.stdout(Stdio::inherit());
     cmd.stderr(Stdio::inherit());
     cmd.stdin(Stdio::inherit());
 
-    // Execute the command
     let status = cmd
         .status()
         .context("Failed to execute command with pkgx")?;
@@ -616,4 +570,59 @@ fn check_pkgx_binary() -> bool {
         .status()
         .map(|s| s.success())
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_tool_spec_with_version() {
+        let (name, version) = parse_tool_spec("python@3.11");
+        assert_eq!(name, "python");
+        assert_eq!(version, "3.11");
+    }
+
+    #[test]
+    fn test_parse_tool_spec_without_version() {
+        let (name, version) = parse_tool_spec("python");
+        assert_eq!(name, "python");
+        assert_eq!(version, "latest");
+    }
+
+    #[test]
+    fn test_parse_tool_spec_complex_version() {
+        let (name, version) = parse_tool_spec("node@18.16.0");
+        assert_eq!(name, "node");
+        assert_eq!(version, "18.16.0");
+    }
+
+    #[test]
+    fn test_map_tool_to_project_python() {
+        assert_eq!(map_tool_to_project("python"), "python.org");
+        assert_eq!(map_tool_to_project("python3"), "python.org");
+        assert_eq!(map_tool_to_project("pip"), "python.org");
+    }
+
+    #[test]
+    fn test_map_tool_to_project_node() {
+        assert_eq!(map_tool_to_project("node"), "nodejs.org");
+        assert_eq!(map_tool_to_project("npm"), "nodejs.org");
+    }
+
+    #[test]
+    fn test_map_tool_to_project_go() {
+        assert_eq!(map_tool_to_project("go"), "go.dev");
+    }
+
+    #[test]
+    fn test_map_tool_to_project_rust() {
+        assert_eq!(map_tool_to_project("cargo"), "rust-lang.org");
+        assert_eq!(map_tool_to_project("rustc"), "rust-lang.org");
+    }
+
+    #[test]
+    fn test_map_tool_to_project_unknown() {
+        assert_eq!(map_tool_to_project("unknown-tool"), "unknown-tool");
+    }
 }

@@ -11,7 +11,10 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v5
@@ -28,16 +31,21 @@ jobs:
         run: cargo clippy -- -D warnings
 
       - name: Build
-        uses: ./.github/actions/build-release
+        run: cargo build --release
 
       - name: Run tests
-        run: ./hack/test.sh
+        run: cargo test
 
       - name: Check binary size
         run: |
-          SIZE=$(stat -c%s "target/release/picolayer")
+          if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            SIZE=$(stat -f%z "target/release/picolayer")
+          else
+            SIZE=$(stat -c%s "target/release/picolayer")
+          fi
+
           echo "Binary size: $SIZE bytes"
-          if [ "$SIZE" -gt 10000000 ]; then  # 10MB
+          if [ "$SIZE" -gt 10000000 ]; then
             echo "Warning: Binary size exceeds 10MB"
             exit 1
           fi

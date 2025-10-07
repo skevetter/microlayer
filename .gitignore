@@ -15,3 +15,7 @@ target/
 Thumbs.db
 
 node_modules
+
+# Test artifacts
+tests/artifacts/*.tar.xz
+tests/artifacts/*.asc

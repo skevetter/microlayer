@@ -5,14 +5,14 @@ use reqwest::blocking::Client;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::fs::{self, File};
+
 use std::io::{BufReader, Write};
 use std::path::Path;
-use std::process::Command;
-use tar::Archive;
 
-// ============================================================================
-// Data Structures
-// ============================================================================
+use tar::Archive;
+use xz::read::XzDecoder;
+
+const GITHUB_API: &str = "api.github.com";
 
 #[derive(Debug, Deserialize)]
 struct Release {
@@ -37,10 +37,6 @@ struct InstallConfig<'a> {
     gpg_key: Option<&'a str>,
 }
 
-// ============================================================================
-// Public API
-// ============================================================================
-
 /// Install binaries from a GitHub release
 pub fn install(
     repo: &str,
@@ -63,10 +59,6 @@ pub fn install(
 
     Installer::new().install(config)
 }
-
-// ============================================================================
-// Installer Implementation
-// ============================================================================
 
 struct Installer {
     client: Client,
@@ -130,10 +122,6 @@ impl Installer {
     }
 }
 
-// ============================================================================
-// Release Client
-// ============================================================================
-
 struct ReleaseClient<'a> {
     client: &'a Client,
 }
@@ -162,19 +150,15 @@ impl<'a> ReleaseClient<'a> {
 
     fn build_url(&self, repo: &str, version: &str) -> String {
         if version == "latest" {
-            format!("https://api.github.com/repos/{}/releases/latest", repo)
+            format!("https://{}/repos/{}/releases/latest", GITHUB_API, repo)
         } else {
             format!(
-                "https://api.github.com/repos/{}/releases/tags/{}",
-                repo, version
+                "https://{}/repos/{}/releases/tags/{}",
+                GITHUB_API, repo, version
             )
         }
     }
 }
-
-// ============================================================================
-// Asset Selection
-// ============================================================================
 
 struct AssetSelector;
 
@@ -207,7 +191,6 @@ impl AssetSelector {
             return Ok(asset);
         }
 
-        // Fall back to regular selection
         self.select_by_platform(assets)
             .or_else(|| self.select_any_archive(assets))
             .context("No suitable asset found for this platform")
@@ -230,7 +213,7 @@ impl AssetSelector {
                 .any(|p| name_lower.contains(&p.to_lowercase()));
             let is_archive = self.is_archive(&name_lower);
 
-            // Check if there's a corresponding signature file
+            // Check for a signature file
             let has_signature = assets.iter().any(|sig_asset| {
                 sig_asset.name == format!("{}.asc", asset.name)
                     || sig_asset.name == format!("{}.sig", asset.name)
@@ -300,16 +283,12 @@ impl AssetSelector {
     }
 }
 
-// ============================================================================
-// Asset Installation
-// ============================================================================
-
-struct AssetInstaller<'a> {
+pub struct AssetInstaller<'a> {
     client: &'a Client,
 }
 
 impl<'a> AssetInstaller<'a> {
-    fn new(client: &'a Client) -> Self {
+    pub fn new(client: &'a Client) -> Self {
         Self { client }
     }
 
@@ -317,7 +296,7 @@ impl<'a> AssetInstaller<'a> {
         println!("Downloading asset...");
         let archive_data = self.download_asset(asset)?;
 
-        println!("Extracting binaries...");
+        println!("Extracting binaries: {}", binary_names.join(", "));
         self.extract_binaries(&archive_data, binary_names, bin_location)?;
 
         Ok(())
@@ -346,7 +325,6 @@ impl<'a> AssetInstaller<'a> {
     ) -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
 
-        // Determine archive format and extract accordingly
         if self.is_tar_xz_archive(archive_data) {
             self.extract_tar_xz(archive_data, binary_names, bin_location, &temp_dir)
         } else {
@@ -354,7 +332,7 @@ impl<'a> AssetInstaller<'a> {
         }
     }
 
-    fn is_tar_xz_archive(&self, data: &[u8]) -> bool {
+    pub fn is_tar_xz_archive(&self, data: &[u8]) -> bool {
         // XZ files start with 0xFD, '7', 'z', 'X', 'Z', 0x00
         data.len() >= 6 && data[0] == 0xFD && &data[1..6] == b"7zXZ\x00"
     }
@@ -395,43 +373,26 @@ impl<'a> AssetInstaller<'a> {
         Ok(())
     }
 
-    fn extract_tar_xz(
+    pub fn extract_tar_xz(
         &self,
         archive_data: &[u8],
         binary_names: &[String],
         bin_location: &str,
         temp_dir: &tempfile::TempDir,
     ) -> Result<()> {
-        let archive_path = temp_dir.path().join("download.tar.xz");
         let extract_dir = temp_dir.path().join("extracted");
 
-        // Write the archive to a temporary file
-        let mut file = File::create(&archive_path)?;
-        file.write_all(archive_data)?;
-
-        // Create extraction directory
         fs::create_dir_all(&extract_dir)?;
         fs::create_dir_all(bin_location).context("Failed to create bin directory")?;
 
-        // Use system tar command to extract .tar.xz file
-        let output = Command::new("tar")
-            .args([
-                "-xf",
-                archive_path.to_str().unwrap(),
-                "-C",
-                extract_dir.to_str().unwrap(),
-            ])
-            .output()
-            .context("Failed to execute tar command")?;
+        let cursor = std::io::Cursor::new(archive_data);
+        let xz_decoder = XzDecoder::new(cursor);
+        let mut archive = Archive::new(xz_decoder);
 
-        if !output.status.success() {
-            anyhow::bail!(
-                "tar extraction failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-        }
+        archive
+            .unpack(&extract_dir)
+            .context("Failed to extract tar.xz archive")?;
 
-        // Find and copy the binary files
         self.find_and_install_binaries(&extract_dir, binary_names, bin_location)?;
 
         Ok(())
@@ -493,10 +454,6 @@ impl<'a> AssetInstaller<'a> {
         Ok(())
     }
 }
-
-// ============================================================================
-// Asset Verification
-// ============================================================================
 
 struct AssetVerifier<'a> {
     client: &'a Client,
@@ -657,10 +614,6 @@ impl<'a> AssetVerifier<'a> {
     }
 }
 
-// ============================================================================
-// GPG Verification
-// ============================================================================
-
 struct GpgVerifier<'a> {
     client: &'a Client,
 }
@@ -726,7 +679,6 @@ impl<'a> GpgVerifier<'a> {
 
         let key_data = if key_content.starts_with("http://") || key_content.starts_with("https://")
         {
-            // Download GPG key from URL
             println!("Downloading GPG public key from URL...");
             let response = self
                 .client
@@ -754,10 +706,6 @@ impl<'a> GpgVerifier<'a> {
         Ok(public_key)
     }
 }
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
 
 fn get_filename_variants(filename: &str) -> Vec<String> {
     let compression_extensions = [

@@ -170,13 +170,11 @@ fn main() -> Result<()> {
             ephemeral,
             delete,
         } => {
-            // Handle delete flag - this is a standalone operation
             if delete {
                 run::uninstall_pkgx()?;
                 return Ok(());
             }
 
-            // Normal execution with optional ephemeral cleanup
             run::execute(&tool, &args, &working_dir, &env, force_pkgx, ephemeral)?;
         }
     }
