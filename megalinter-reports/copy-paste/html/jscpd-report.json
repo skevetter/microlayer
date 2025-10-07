@@ -1,0 +1,934 @@
+{
+  "statistics": {
+    "detectionDate": "2025-10-07T03:55:43.957Z",
+    "formats": {
+      "rust": {
+        "sources": {
+          "tests/common/mod.rs": {
+            "lines": 52,
+            "tokens": 386,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/utils/linux_info.rs": {
+            "lines": 79,
+            "tokens": 562,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/utils/command.rs": {
+            "lines": 84,
+            "tokens": 676,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "tests/run_test.rs": {
+            "lines": 272,
+            "tokens": 2262,
+            "sources": 1,
+            "clones": 6,
+            "duplicatedLines": 94,
+            "duplicatedTokens": 871,
+            "percentage": 34.56,
+            "percentageTokens": 38.51,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "tests/main_test.rs": {
+            "lines": 59,
+            "tokens": 550,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "tests/gh_release_test.rs": {
+            "lines": 575,
+            "tokens": 4031,
+            "sources": 1,
+            "clones": 22,
+            "duplicatedLines": 358,
+            "duplicatedTokens": 2727,
+            "percentage": 62.26,
+            "percentageTokens": 67.65,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "tests/brew_test.rs": {
+            "lines": 55,
+            "tokens": 401,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "tests/apt_get_test.rs": {
+            "lines": 149,
+            "tokens": 987,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "tests/apk_test.rs": {
+            "lines": 67,
+            "tokens": 463,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/run.rs": {
+            "lines": 627,
+            "tokens": 5295,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 20,
+            "duplicatedTokens": 160,
+            "percentage": 3.19,
+            "percentageTokens": 3.02,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/main.rs": {
+            "lines": 182,
+            "tokens": 1027,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/lib.rs": {
+            "lines": 7,
+            "tokens": 51,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/gh_release.rs": {
+            "lines": 776,
+            "tokens": 6951,
+            "sources": 1,
+            "clones": 6,
+            "duplicatedLines": 86,
+            "duplicatedTokens": 910,
+            "percentage": 11.08,
+            "percentageTokens": 13.09,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/brew.rs": {
+            "lines": 62,
+            "tokens": 521,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/apt_get.rs": {
+            "lines": 117,
+            "tokens": 1053,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/apk.rs": {
+            "lines": 36,
+            "tokens": 329,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 3199,
+          "tokens": 25545,
+          "sources": 16,
+          "clones": 18,
+          "duplicatedLines": 279,
+          "duplicatedTokens": 2334,
+          "percentage": 8.72,
+          "percentageTokens": 9.14,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "bash": {
+        "sources": {
+          ".devcontainer/post_create.sh": {
+            "lines": 13,
+            "tokens": 66,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 13,
+          "tokens": 66,
+          "sources": 1,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "markdown": {
+        "sources": {
+          "dc09182e-3403-433c-9870-5d2c2f72dac6-megalinter_file_names_cspell.txt": {
+            "lines": 26,
+            "tokens": 179,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 26,
+          "tokens": 179,
+          "sources": 1,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      }
+    },
+    "total": {
+      "lines": 3238,
+      "tokens": 25790,
+      "sources": 18,
+      "clones": 18,
+      "duplicatedLines": 279,
+      "duplicatedTokens": 2334,
+      "percentage": 8.62,
+      "percentageTokens": 9.05,
+      "newDuplicatedLines": 0,
+      "newClones": 0
+    }
+  },
+  "duplicates": [
+    {
+      "format": "rust",
+      "lines": 21,
+      "fragment": ",\n        \"--bin-location\",\n        bin_location,\n    ]);\n\n    if !output.status.success() {\n        let stderr = String::from_utf8_lossy(&output.stderr);\n        if is_transient_error(&stderr) {\n            eprintln!(\"Skipping test due to transient error\");\n            return;\n        }\n        eprintln!(\n            \"Installation output: {}\",\n            String::from_utf8_lossy(&output.stdout)\n        );\n        eprintln!(\"Installation error: {}\", stderr);\n    }\n\n    assert!(\n        output.status.success(),\n        \"lazygit v0.54.0 installation failed: {}\"",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 63,
+        "end": 83,
+        "startLoc": {
+          "line": 63,
+          "column": 10,
+          "position": 415
+        },
+        "endLoc": {
+          "line": 83,
+          "column": 42,
+          "position": 542
+        }
+      },
+      "secondFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 16,
+        "end": 36,
+        "startLoc": {
+          "line": 16,
+          "column": 9,
+          "position": 120
+        },
+        "endLoc": {
+          "line": 36,
+          "column": 31,
+          "position": 247
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 10,
+      "fragment": "() {\n    let temp_dir = tempfile::tempdir().expect(\"Failed to create temp dir\");\n    let bin_location = temp_dir.path().to_str().unwrap();\n\n    let output = run_picolayer(&[\n        \"gh-release\",\n        \"jesseduffield/lazygit\",\n        \"lazygit\",\n        \"--version\",\n        \"latest\"",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 101,
+        "end": 110,
+        "startLoc": {
+          "line": 101,
+          "column": 34,
+          "position": 635
+        },
+        "endLoc": {
+          "line": 110,
+          "column": 9,
+          "position": 712
+        }
+      },
+      "secondFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 54,
+        "end": 63,
+        "startLoc": {
+          "line": 54,
+          "column": 43,
+          "position": 337
+        },
+        "endLoc": {
+          "line": 63,
+          "column": 10,
+          "position": 414
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 19,
+      "fragment": ",\n    ]);\n\n    if !output.status.success() {\n        let stderr = String::from_utf8_lossy(&output.stderr);\n        if is_transient_error(&stderr) {\n            eprintln!(\"Skipping test due to transient error\");\n            return;\n        }\n        eprintln!(\n            \"Installation output: {}\",\n            String::from_utf8_lossy(&output.stdout)\n        );\n        eprintln!(\"Installation error: {}\", stderr);\n    }\n\n    assert!(\n        output.status.success(),\n        \"lazygit latest with checksum installation failed: {}\"",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 113,
+        "end": 131,
+        "startLoc": {
+          "line": 113,
+          "column": 13,
+          "position": 725
+        },
+        "endLoc": {
+          "line": 131,
+          "column": 55,
+          "position": 844
+        }
+      },
+      "secondFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 18,
+        "end": 36,
+        "startLoc": {
+          "line": 18,
+          "column": 13,
+          "position": 128
+        },
+        "endLoc": {
+          "line": 36,
+          "column": 31,
+          "position": 247
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 19,
+      "fragment": ",\n    ]);\n\n    if !output.status.success() {\n        let stderr = String::from_utf8_lossy(&output.stderr);\n        if is_transient_error(&stderr) {\n            eprintln!(\"Skipping test due to transient error\");\n            return;\n        }\n        eprintln!(\n            \"Installation output: {}\",\n            String::from_utf8_lossy(&output.stdout)\n        );\n        eprintln!(\"Installation error: {}\", stderr);\n    }\n\n    assert!(\n        output.status.success(),\n        \"pkgx with filter installation failed: {}\"",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 210,
+        "end": 228,
+        "startLoc": {
+          "line": 210,
+          "column": 7,
+          "position": 1403
+        },
+        "endLoc": {
+          "line": 228,
+          "column": 43,
+          "position": 1522
+        }
+      },
+      "secondFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 18,
+        "end": 36,
+        "startLoc": {
+          "line": 18,
+          "column": 13,
+          "position": 128
+        },
+        "endLoc": {
+          "line": 36,
+          "column": 31,
+          "position": 247
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 10,
+      "fragment": "() {\n    let temp_dir = tempfile::tempdir().expect(\"Failed to create temp dir\");\n    let bin_location = temp_dir.path().to_str().unwrap();\n\n    let output = run_picolayer(&[\n        \"gh-release\",\n        \"pkgxdev/pkgx\",\n        \"pkgx\",\n        \"--version\",\n        \"v2.7.0\"",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 245,
+        "end": 254,
+        "startLoc": {
+          "line": 245,
+          "column": 37,
+          "position": 1608
+        },
+        "endLoc": {
+          "line": 254,
+          "column": 9,
+          "position": 1685
+        }
+      },
+      "secondFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 7,
+        "end": 16,
+        "startLoc": {
+          "line": 7,
+          "column": 38,
+          "position": 42
+        },
+        "endLoc": {
+          "line": 16,
+          "column": 9,
+          "position": 119
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 10,
+      "fragment": "() {\n    let temp_dir = tempfile::tempdir().expect(\"Failed to create temp dir\");\n    let bin_location = temp_dir.path().to_str().unwrap();\n    let os = if std::env::consts::OS == \"macos\" {\n        \"darwin\"\n    } else {\n        std::env::consts::OS\n    };\n\n    let output = run_picolayer",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 279,
+        "end": 288,
+        "startLoc": {
+          "line": 279,
+          "column": 47,
+          "position": 1831
+        },
+        "endLoc": {
+          "line": 288,
+          "column": 14,
+          "position": 1938
+        }
+      },
+      "secondFile": {
+        "name": "tests/run_test.rs",
+        "start": 229,
+        "end": 238,
+        "startLoc": {
+          "line": 229,
+          "column": 37,
+          "position": 1933
+        },
+        "endLoc": {
+          "line": 238,
+          "column": 4,
+          "position": 2040
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 15,
+      "fragment": "() {\n    let temp_dir = tempfile::tempdir().expect(\"Failed to create temp dir\");\n    let bin_location = temp_dir.path().to_str().unwrap();\n    let os = if std::env::consts::OS == \"macos\" {\n        \"darwin\"\n    } else {\n        std::env::consts::OS\n    };\n\n    let output = run_picolayer(&[\n        \"gh-release\",\n        \"pkgxdev/pkgx\",\n        \"pkgx\",\n        \"--version\",\n        \"v999.999.999\"",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 317,
+        "end": 331,
+        "startLoc": {
+          "line": 317,
+          "column": 40,
+          "position": 2106
+        },
+        "endLoc": {
+          "line": 331,
+          "column": 15,
+          "position": 2235
+        }
+      },
+      "secondFile": {
+        "name": "tests/run_test.rs",
+        "start": 229,
+        "end": 293,
+        "startLoc": {
+          "line": 229,
+          "column": 37,
+          "position": 1933
+        },
+        "endLoc": {
+          "line": 293,
+          "column": 9,
+          "position": 1960
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 26,
+      "fragment": ".to_str().unwrap();\n    let os = if std::env::consts::OS == \"macos\" {\n        \"darwin\"\n    } else {\n        std::env::consts::OS\n    };\n\n    let output = run_picolayer(&[\n        \"gh-release\",\n        \"pkgxdev/pkgx\",\n        \"pkgx\",\n        \"--version\",\n        \"v2.7.0\",\n        \"--bin-location\",\n        bin_location,\n        \"--filter\",\n        &format!(\"{}.*x86-64\\\\.tar\\\\.xz\", os),\n    ]);\n\n    if !output.status.success() {\n        let stderr = String::from_utf8_lossy(&output.stderr);\n        if is_transient_error(&stderr) {\n            eprintln!(\"Skipping test due to transient error\");\n            return;\n        }\n    }",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 356,
+        "end": 381,
+        "startLoc": {
+          "line": 356,
+          "column": 12,
+          "position": 2438
+        },
+        "endLoc": {
+          "line": 381,
+          "column": 2,
+          "position": 2621
+        }
+      },
+      "secondFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 281,
+        "end": 307,
+        "startLoc": {
+          "line": 281,
+          "column": 2,
+          "position": 1868
+        },
+        "endLoc": {
+          "line": 307,
+          "column": 4,
+          "position": 2052
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 10,
+      "fragment": "() {\n    let temp_dir = tempfile::tempdir().expect(\"Failed to create temp dir\");\n    let bin_location = temp_dir.path().to_str().unwrap();\n    let os = if std::env::consts::OS == \"macos\" {\n        \"darwin\"\n    } else {\n        std::env::consts::OS\n    };\n\n    // Test with an archive that might contain multiple binaries",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 392,
+        "end": 401,
+        "startLoc": {
+          "line": 392,
+          "column": 42,
+          "position": 2687
+        },
+        "endLoc": {
+          "line": 401,
+          "column": 61,
+          "position": 2788
+        }
+      },
+      "secondFile": {
+        "name": "tests/run_test.rs",
+        "start": 229,
+        "end": 238,
+        "startLoc": {
+          "line": 229,
+          "column": 37,
+          "position": 1933
+        },
+        "endLoc": {
+          "line": 238,
+          "column": 4,
+          "position": 2034
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 21,
+      "fragment": "let output = run_picolayer(&[\n        \"gh-release\",\n        \"pkgxdev/pkgx\",\n        \"pkgx\",\n        \"--version\",\n        \"v2.7.0\",\n        \"--bin-location\",\n        bin_location,\n        \"--filter\",\n        &format!(\"{}.*x86-64\\\\.tar\\\\.xz\", os),\n    ]);\n\n    if !output.status.success() {\n        let stderr = String::from_utf8_lossy(&output.stderr);\n        if is_transient_error(&stderr) {\n            eprintln!(\"Skipping test due to transient error\");\n            return;\n        }\n    }\n\n    if output.status.success() {",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 402,
+        "end": 422,
+        "startLoc": {
+          "line": 402,
+          "column": 5,
+          "position": 2791
+        },
+        "endLoc": {
+          "line": 422,
+          "column": 2,
+          "position": 2924
+        }
+      },
+      "secondFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 288,
+        "end": 383,
+        "startLoc": {
+          "line": 288,
+          "column": 5,
+          "position": 1932
+        },
+        "endLoc": {
+          "line": 383,
+          "column": 3,
+          "position": 2635
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 9,
+      "fragment": "let temp_dir = tempfile::tempdir().expect(\"Failed to create temp dir\");\n    let bin_location = temp_dir.path().to_str().unwrap();\n    let os = if std::env::consts::OS == \"macos\" {\n        \"darwin\"\n    } else {\n        std::env::consts::OS\n    };\n\n    let start",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 435,
+        "end": 443,
+        "startLoc": {
+          "line": 435,
+          "column": 5,
+          "position": 2991
+        },
+        "endLoc": {
+          "line": 443,
+          "column": 6,
+          "position": 3088
+        }
+      },
+      "secondFile": {
+        "name": "tests/run_test.rs",
+        "start": 230,
+        "end": 238,
+        "startLoc": {
+          "line": 230,
+          "column": 5,
+          "position": 1939
+        },
+        "endLoc": {
+          "line": 238,
+          "column": 7,
+          "position": 2036
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 31,
+      "fragment": ");\n}\n\n#[test]\nfn test_pkgx_xz_installation_end_to_end() {\n    let temp_dir = tempfile::tempdir().expect(\"Failed to create temp dir\");\n    let bin_location = temp_dir.path().to_str().unwrap();\n    let os = if std::env::consts::OS == \"macos\" {\n        \"darwin\"\n    } else {\n        std::env::consts::OS\n    };\n\n    let output = run_picolayer(&[\n        \"gh-release\",\n        \"pkgxdev/pkgx\",\n        \"pkgx\",\n        \"--version\",\n        \"v2.7.0\",\n        \"--bin-location\",\n        bin_location,\n        \"--filter\",\n        &format!(\"{}.*x86-64\\\\.tar\\\\.xz\", os),\n    ]);\n\n    if !output.status.success() {\n        let stderr = String::from_utf8_lossy(&output.stderr);\n        if is_transient_error(&stderr) {\n            eprintln!(\"Skipping test due to transient error\");\n            return;\n        };",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 469,
+        "end": 499,
+        "startLoc": {
+          "line": 469,
+          "column": 5,
+          "position": 3261
+        },
+        "endLoc": {
+          "line": 499,
+          "column": 2,
+          "position": 3490
+        }
+      },
+      "secondFile": {
+        "name": "tests/run_test.rs",
+        "start": 225,
+        "end": 307,
+        "startLoc": {
+          "line": 225,
+          "column": 2,
+          "position": 1922
+        },
+        "endLoc": {
+          "line": 307,
+          "column": 4,
+          "position": 2052
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 25,
+      "fragment": "() {\n    let temp_dir = tempfile::tempdir().expect(\"Failed to create temp dir\");\n    let bin_location = temp_dir.path().to_str().unwrap();\n    let os = if std::env::consts::OS == \"macos\" {\n        \"darwin\"\n    } else {\n        std::env::consts::OS\n    };\n\n    let output = run_picolayer(&[\n        \"gh-release\",\n        \"pkgxdev/pkgx\",\n        \"pkgx\",\n        \"--version\",\n        \"v2.7.0\",\n        \"--bin-location\",\n        bin_location,\n        \"--filter\",\n        &format!(\"{}.*x86-64\\\\.tar\\\\.xz\", os),\n    ]);\n\n    if !output.status.success() {\n        let stderr = String::from_utf8_lossy(&output.stderr);\n        if is_transient_error(&stderr) {\n            eprintln!(\"Skipping XZ test due to transient error: {}\"",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 515,
+        "end": 539,
+        "startLoc": {
+          "line": 515,
+          "column": 19,
+          "position": 3565
+        },
+        "endLoc": {
+          "line": 539,
+          "column": 46,
+          "position": 3773
+        }
+      },
+      "secondFile": {
+        "name": "tests/run_test.rs",
+        "start": 229,
+        "end": 303,
+        "startLoc": {
+          "line": 229,
+          "column": 37,
+          "position": 1933
+        },
+        "endLoc": {
+          "line": 303,
+          "column": 39,
+          "position": 2039
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 14,
+      "fragment": "() {\n    let temp_dir = tempfile::tempdir().expect(\"Failed to create temp dir\");\n    let bin_location = temp_dir.path().to_str().unwrap();\n\n    let output = run_picolayer(&[\n        \"gh-release\",\n        \"pkgxdev/pkgx\",\n        \"pkgx\",\n        \"--version\",\n        \"v2.7.0\",\n        \"--bin-location\",\n        bin_location,\n        \"--filter\",\n        \"nonexistent_pattern_that_matches_nothing\"",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 549,
+        "end": 562,
+        "startLoc": {
+          "line": 549,
+          "column": 38,
+          "position": 3828
+        },
+        "endLoc": {
+          "line": 562,
+          "column": 43,
+          "position": 3921
+        }
+      },
+      "secondFile": {
+        "name": "tests/gh_release_test.rs",
+        "start": 7,
+        "end": 258,
+        "startLoc": {
+          "line": 7,
+          "column": 38,
+          "position": 42
+        },
+        "endLoc": {
+          "line": 258,
+          "column": 27,
+          "position": 1701
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 11,
+      "fragment": "{\n        cmd.env(key, value);\n    }\n\n    cmd.stdout(Stdio::inherit());\n    cmd.stderr(Stdio::inherit());\n    cmd.stdin(Stdio::inherit());\n\n    let status = cmd\n        .status()\n        .context(\"Failed to execute command with pkgx\"",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/run.rs",
+        "start": 542,
+        "end": 552,
+        "startLoc": {
+          "line": 542,
+          "column": 2,
+          "position": 4689
+        },
+        "endLoc": {
+          "line": 552,
+          "column": 38,
+          "position": 4769
+        }
+      },
+      "secondFile": {
+        "name": "src/run.rs",
+        "start": 314,
+        "end": 324,
+        "startLoc": {
+          "line": 314,
+          "column": 2,
+          "position": 2579
+        },
+        "endLoc": {
+          "line": 324,
+          "column": 41,
+          "position": 2659
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 18,
+      "fragment": "<'a>(&self, assets: &'a [Asset]) -> Option<&'a Asset> {\n        let arch = std::env::consts::ARCH;\n        let os = std::env::consts::OS;\n\n        let arch_patterns = self.get_arch_patterns(arch);\n        let os_patterns = self.get_os_patterns(os);\n\n        assets.iter().find(|asset| {\n            let name_lower = asset.name.to_lowercase();\n            let has_arch = arch_patterns\n                .iter()\n                .any(|p| name_lower.contains(&p.to_lowercase()));\n            let has_os = os_patterns\n                .iter()\n                .any(|p| name_lower.contains(&p.to_lowercase()));\n            let is_archive = self.is_archive(&name_lower);\n\n            has_arch",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/gh_release.rs",
+        "start": 234,
+        "end": 251,
+        "startLoc": {
+          "line": 234,
+          "column": 19,
+          "position": 2049
+        },
+        "endLoc": {
+          "line": 251,
+          "column": 9,
+          "position": 2273
+        }
+      },
+      "secondFile": {
+        "name": "src/gh_release.rs",
+        "start": 199,
+        "end": 216,
+        "startLoc": {
+          "line": 199,
+          "column": 34,
+          "position": 1630
+        },
+        "endLoc": {
+          "line": 216,
+          "column": 30,
+          "position": 1854
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 10,
+      "fragment": "#[cfg(unix)]\n        {\n            use std::os::unix::fs::PermissionsExt;\n            let mut perms = fs::metadata(&dest_path)?.permissions();\n            perms.set_mode(0o755);\n            fs::set_permissions(&dest_path, perms)?;\n        }\n\n        println!(\"Installed: {} -> {}\", file_name, dest_path.display());\n        Ok",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/gh_release.rs",
+        "start": 445,
+        "end": 454,
+        "startLoc": {
+          "line": 445,
+          "column": 9,
+          "position": 4142
+        },
+        "endLoc": {
+          "line": 454,
+          "column": 3,
+          "position": 4235
+        }
+      },
+      "secondFile": {
+        "name": "src/gh_release.rs",
+        "start": 420,
+        "end": 429,
+        "startLoc": {
+          "line": 420,
+          "column": 21,
+          "position": 3931
+        },
+        "endLoc": {
+          "line": 429,
+          "column": 2,
+          "position": 4024
+        }
+      }
+    },
+    {
+      "format": "rust",
+      "lines": 18,
+      "fragment": "}\n\n    fn download_asset(&self, asset: &Asset) -> Result<Vec<u8>> {\n        let response = self\n            .client\n            .get(&asset.browser_download_url)\n            .header(\"User-Agent\", \"picolayer\")\n            .send()\n            .context(\"Failed to download asset\")?;\n\n        if !response.status().is_success() {\n            anyhow::bail!(\"Failed to download asset: {}\", response.status());\n        }\n\n        Ok(response.bytes()?.to_vec())\n    }\n\n    fn download_checksum",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/gh_release.rs",
+        "start": 566,
+        "end": 583,
+        "startLoc": {
+          "line": 566,
+          "column": 5,
+          "position": 5206
+        },
+        "endLoc": {
+          "line": 583,
+          "column": 18,
+          "position": 5344
+        }
+      },
+      "secondFile": {
+        "name": "src/gh_release.rs",
+        "start": 303,
+        "end": 320,
+        "startLoc": {
+          "line": 303,
+          "column": 5,
+          "position": 2792
+        },
+        "endLoc": {
+          "line": 320,
+          "column": 17,
+          "position": 2930
+        }
+      }
+    }
+  ],
+  "filename": "/node-deps/node_modules/@jscpd/html-reporter/dist/templates/main.pug"
+}

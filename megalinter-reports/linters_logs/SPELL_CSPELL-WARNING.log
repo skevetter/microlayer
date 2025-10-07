@@ -1,0 +1,433 @@
+Results of cspell linter (version 9.2.1)
+See documentation on https://megalinter.io/9.0.1/descriptors/spell_cspell/
+-----------------------------------------------
+
+❌ [ERROR] for workspace /github/workspace
+Linter raw log:
+.github/workflows/ci.yml:22:32     - Unknown word (clippy)     -- components: rustfmt, clippy
+	 Suggestions: [chippy, lippy, flippy, slippy, clip]
+.github/workflows/ci.yml:27:15     - Unknown word (Clippy)     -- - name: Clippy
+	 Suggestions: [Chippy, Lippy, Flippy, Slippy, Clip]
+.github/workflows/ci.yml:28:20     - Unknown word (clippy)     -- run: cargo clippy -- -D warnings
+	 Suggestions: [chippy, lippy, flippy, slippy, clip]
+.github/workflows/ci.yml:38:44     - Unknown word (picolayer)  -- c%s "target/release/picolayer")
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/docker.yml:24:29     - Unknown word (Buildx)     -- name: Set up Docker Buildx
+	 Suggestions: [Build, Builds, Built, Build's, Builded]
+.github/workflows/docker.yml:25:28     - Unknown word (buildx)     -- uses: docker/setup-buildx-action@v3
+	 Suggestions: [build, builds, built, build's, builded]
+.github/workflows/docker.yml:35:15     - Unknown word (dtolnay)    -- uses: dtolnay/rust-toolchain@stable
+	 Suggestions: [tolan, tonya, dona, dtoa, delay]
+.github/workflows/docker.yml:39:21     - Unknown word (picolayer)  -- - name: Build picolayer binary
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/docker.yml:43:57     - Unknown word (picolayer)  -- unknown-linux-gnu/release/picolayer .
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/release-nightly.yml:35:15     - Unknown word (dtolnay)    -- - uses: dtolnay/rust-toolchain@stable
+	 Suggestions: [tolan, tonya, dona, dtoa, delay]
+.github/workflows/release-nightly.yml:70:66     - Unknown word (picolayer)  -- matrix.target }}/release/picolayer" 2>/dev/null || stat
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/release-nightly.yml:70:139    - Unknown word (picolayer)  -- matrix.target }}/release/picolayer")"
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/release-nightly.yml:80:19     - Unknown word (picolayer)  -- tar czf picolayer-${{ matrix.target }
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/release-nightly.yml:80:57     - Unknown word (picolayer)  -- matrix.target }}.tar.gz picolayer
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/release-nightly.yml:81:14     - Unknown word (picolayer)  -- mv picolayer-${{ matrix.target }
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/release-nightly.yml:119:15    - Unknown word (softprops)  -- uses: softprops/action-gh-release@v
+	 Suggestions: [softphone, softwoods, southrons, softphones]
+.github/workflows/release.yml:63:19     - Unknown word (picolayer)  -- tar czf picolayer-${{ matrix.target }
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/release.yml:63:57     - Unknown word (picolayer)  -- matrix.target }}.tar.gz picolayer
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/release.yml:64:14     - Unknown word (picolayer)  -- mv picolayer-${{ matrix.target }
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/release.yml:69:17     - Unknown word (picolayer)  -- name: picolayer-${{ matrix.target }
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/release.yml:70:17     - Unknown word (picolayer)  -- path: picolayer-${{ matrix.target }
+	 Suggestions: [player, picoline, pillager]
+.github/workflows/release.yml:94:13     - Unknown word (elif)       -- elif [ "$RELEASE_TYPE" =
+	 Suggestions: [leif, elia, elis, eliz, enif]
+.github/workflows/release.yml:119:15    - Unknown word (softprops)  -- uses: softprops/action-gh-release@v
+	 Suggestions: [softphone, softwoods, southrons, softphones]
+Cargo.toml:2:9       - Unknown word (picolayer)  -- name = "picolayer"
+	 Suggestions: [player, picoline, pillager]
+Cargo.toml:5:13      - Unknown word (skevetter)  -- authors = ["skevetter"]
+	 Suggestions: [skeeter, sheeter, skelter, sweeter, skeeters]
+Cargo.toml:18:1      - Unknown word (flate)      -- flate2 = "1.1.4"
+	 Suggestions: [flat*, fate, flake, flame, flare]
+Cargo.toml:20:1      - Unknown word (indicatif)  -- indicatif = { version = "0.17
+	 Suggestions: [indicate, indicated, indicates, indicator, indicating]
+Cargo.toml:21:1      - Unknown word (libpkgx)    -- libpkgx = { version = "0.7.
+	 Suggestions: [libpng, Libpng, limpkin]
+Cargo.toml:24:1      - Unknown word (reqwest)    -- reqwest = { version = "0.12
+	 Suggestions: [request, reest, rawest, retest, revest]
+Cargo.toml:24:67     - Unknown word (rustls)     -- blocking", "json", "rustls-tls-webpki-roots"],
+	 Suggestions: [rusts, rust's, rustle, rustles, russ]
+Cargo.toml:24:78     - Unknown word (webpki)     -- "json", "rustls-tls-webpki-roots"], default-features
+	 Suggestions: [webkit, weak, webb, webm, webs]
+Cargo.toml:25:1      - Unknown word (rusqlite)   -- rusqlite = { version = "0.33
+	 Suggestions: [ruralite, sqlite, SQLite, uralite, ursuline]
+Cargo.toml:26:1      - Unknown word (serde)      -- serde = { version = "1.0.
+	 Suggestions: [sered, sere, serge, serve, verde]
+Cargo.toml:27:1      - Unknown word (serde)      -- serde_json = "1.0.145"
+	 Suggestions: [sered, sere, serge, serve, verde]
+Cargo.toml:32:1      - Unknown word (walkdir)    -- walkdir = "2.5.0"
+	 Suggestions: [walker, workdir, Walker, workDir, walkyrie]
+dc09182e-3403-433c-9870-5d2c2f72dac6-megalinter_file_names_cspell.txt:12:23     - Unknown word (pkgx)       -- assets test artifacts pkgx 2 7 0 linux x86 64 tar
+	 Suggestions: [pkg, paxg, page, payx, pegs]
+dc09182e-3403-433c-9870-5d2c2f72dac6-megalinter_file_names_cspell.txt:13:23     - Unknown word (pkgx)       -- assets test artifacts pkgx 2 7 0 linux x86 64 tar
+	 Suggestions: [pkg, paxg, page, payx, pegs]
+Dockerfile:10:6      - Unknown word (picolayer)  -- COPY picolayer /usr/local/bin/picolayer
+	 Suggestions: [player, picoline, pillager]
+Dockerfile:10:31     - Unknown word (picolayer)  -- picolayer /usr/local/bin/picolayer
+	 Suggestions: [player, picoline, pillager]
+Dockerfile:12:29     - Unknown word (picolayer)  -- chmod +x /usr/local/bin/picolayer
+	 Suggestions: [player, picoline, pillager]
+Dockerfile:14:29     - Unknown word (picolayer)  -- ENTRYPOINT ["/usr/local/bin/picolayer"]
+	 Suggestions: [player, picoline, pillager]
+LICENSE:3:20      - Unknown word (skevetter)  -- Copyright (c) 2025 skevetter
+	 Suggestions: [skeeter, sheeter, skelter, sweeter, skeeters]
+README.md:1:3       - Unknown word (picolayer)  -- # picolayer
+	 Suggestions: [player, picoline, pillager]
+README.md:3:44      - Unknown word (Picolayer)  -- layer management tool. Picolayer helps keep container
+	 Suggestions: [Player, Picoline, Pillager]
+README.md:5:34      - Unknown word (nanolayer)  -- is inspired by the [nanolayer](https://github.com
+	 Suggestions: [annoyer, nanometer]
+README.md:13:34     - Unknown word (pkgx)       -- Execute commands with pkgx for automatic dependency
+	 Suggestions: [pkg, paxg, page, payx, pegs]
+README.md:35:1      - Unknown word (picolayer)  -- picolayer apt-get htop,curl,git
+	 Suggestions: [player, picoline, pillager]
+README.md:41:1      - Unknown word (picolayer)  -- picolayer apt-get neovim --ppas
+	 Suggestions: [player, picoline, pillager]
+README.md:41:28     - Unknown word (ppas)       -- picolayer apt-get neovim --ppas ppa:neovim-ppa/stable
+	 Suggestions: [paps, pas, peas, ppam, pyas]
+README.md:47:1      - Unknown word (picolayer)  -- picolayer apt-get neovim --ppas
+	 Suggestions: [player, picoline, pillager]
+README.md:47:28     - Unknown word (ppas)       -- picolayer apt-get neovim --ppas ppa:neovim-ppa/stable
+	 Suggestions: [paps, pas, peas, ppam, pyas]
+README.md:47:63     - Unknown word (ppas)       -- neovim-ppa/stable --force-ppas-on-non-ubuntu
+	 Suggestions: [paps, pas, peas, ppam, pyas]
+README.md:55:1      - Unknown word (picolayer)  -- picolayer apk htop,curl,git
+	 Suggestions: [player, picoline, pillager]
+README.md:81:22     - Unknown word (jesseduffield) -- picolayer gh-release jesseduffield/lazygit lazygit --version
+	 Suggestions: []
+README.md:81:36     - Unknown word (lazygit)       -- release jesseduffield/lazygit lazygit --version latest
+	 Suggestions: [lait, lazy, lazio, layout, lazuli]
+README.md:81:44     - Unknown word (lazygit)       -- jesseduffield/lazygit lazygit --version latest --checksum
+	 Suggestions: [lait, lazy, lazio, layout, lazuli]
+README.md:99:22     - Unknown word (pkgxdev)       -- picolayer gh-release pkgxdev/pkgx pkgx --version
+	 Suggestions: [pkgadd, pkg-dir]
+README.md:99:30     - Unknown word (pkgx)          -- picolayer gh-release pkgxdev/pkgx pkgx --version latest
+	 Suggestions: [pkg, paxg, page, payx, pegs]
+README.md:99:35     - Unknown word (pkgx)          -- release pkgxdev/pkgx pkgx --version latest --checksum
+	 Suggestions: [pkg, paxg, page, payx, pegs]
+README.md:102:23    - Unknown word (pkgx)          -- # Run commands with pkgx
+	 Suggestions: [pkg, paxg, page, payx, pegs]
+README.md:104:35    - Unknown word (pkgx)          -- version of any tool using pkgx for automatic dependency
+	 Suggestions: [pkg, paxg, page, payx, pegs]
+README.md:144:24    - Unknown word (pyproject)     -- requirements.txt`, `pyproject.toml` → Python
+	 Suggestions: [project, projects]
+src/gh_release.rs:2:5       - Unknown word (flate)      -- use flate2::read::GzDecoder;
+	 Suggestions: [flat*, fate, flake, flame, flare]
+src/gh_release.rs:4:5       - Unknown word (reqwest)    -- use reqwest::blocking::Client;
+	 Suggestions: [request, reest, rawest, retest, revest]
+src/gh_release.rs:140:36    - Unknown word (picolayer)  -- header("User-Agent", "picolayer")
+	 Suggestions: [player, picoline, pillager]
+src/gh_release.rs:265:35    - Unknown word (armv)       -- arm" => vec!["arm", "armv7"],
+	 Suggestions: [argv, arms, army, arm, Arm]
+src/gh_release.rs:309:36    - Unknown word (picolayer)  -- header("User-Agent", "picolayer")
+	 Suggestions: [player, picoline, pillager]
+src/gh_release.rs:407:22    - Unknown word (walkdir)    -- for entry in walkdir::WalkDir::new(extract
+	 Suggestions: [walker, workdir, Walker, workDir, walkyrie]
+src/gh_release.rs:572:36    - Unknown word (picolayer)  -- header("User-Agent", "picolayer")
+	 Suggestions: [player, picoline, pillager]
+src/gh_release.rs:587:36    - Unknown word (picolayer)  -- header("User-Agent", "picolayer")
+	 Suggestions: [player, picoline, pillager]
+src/gh_release.rs:666:36    - Unknown word (picolayer)  -- header("User-Agent", "picolayer")
+	 Suggestions: [player, picoline, pillager]
+src/gh_release.rs:721:15    - Unknown word (lzma)       -- ".tar.lzma",
+	 Suggestions: [lama, lima, Lima, liam, loam]
+src/gh_release.rs:728:11    - Unknown word (lzma)       -- ".lzma",
+	 Suggestions: [lama, lima, Lima, liam, loam]
+src/main.rs:12:19     - Unknown word (picolayer)  -- #[command(name = "picolayer")]
+	 Suggestions: [player, picoline, pillager]
+src/main.rs:30:9      - Unknown word (ppas)       -- ppas: Option<String>,
+	 Suggestions: [paps, pas, peas, ppam, pyas]
+src/main.rs:34:15     - Unknown word (ppas)       -- force_ppas_on_non_ubuntu: bool
+	 Suggestions: [paps, pas, peas, ppam, pyas]
+src/main.rs:79:29     - Unknown word (pkgx)       -- Run a command using pkgx
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+src/main.rs:96:19     - Unknown word (pkgx)       -- /// Force pkgx even if dependencies
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+src/main.rs:98:15     - Unknown word (pkgx)       -- force_pkgx: bool,
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+src/main.rs:104:34    - Unknown word (pkgx)       -- Completely uninstall pkgx and remove all cache
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+src/main.rs:116:13    - Unknown word (ppas)       -- ppas,
+	 Suggestions: [paps, pas, peas, ppam, pyas]
+src/main.rs:117:19    - Unknown word (ppas)       -- force_ppas_on_non_ubuntu,
+	 Suggestions: [paps, pas, peas, ppam, pyas]
+src/main.rs:122:17    - Unknown word (ppas)       -- ppas.map(|p| p.split(','
+	 Suggestions: [paps, pas, peas, ppam, pyas]
+src/main.rs:169:19    - Unknown word (pkgx)       -- force_pkgx,
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+src/run.rs:8:18      - Unknown word (pkgx)       -- pub fn uninstall_pkgx() -> Result<()> {
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+src/run.rs:9:28      - Unknown word (pkgx)       -- println!("Uninstalling pkgx and removing all associated
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+src/run.rs:14:42     - Unknown word (pkgx)       -- vec!["/usr/local/bin/pkgx", "/usr/local/bin/pkgm
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+src/run.rs:14:65     - Unknown word (pkgm)       -- pkgx", "/usr/local/bin/pkgm"];
+	 Suggestions: [pkgs, pkg, kpmg, page, palm]
+src/run.rs:33:13     - Unknown word (pkgx)       -- let pkgx_dir = home_dir.join
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+src/run.rs:33:40     - Unknown word (pkgx)       -- dir = home_dir.join(".pkgx");
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+src/run.rs:186:17    - Unknown word (gofmt)      -- "go" | "gofmt" => "go.dev".to_string
+	 Suggestions: [gift, goat, goff, gout, govt]
+src/run.rs:187:19    - Unknown word (javac)      -- "java" | "javac" | "mvn" | "gradle"
+	 Suggestions: [java, javan, javas, Java, Javan]
+src/run.rs:188:20    - Unknown word (rustc)      -- "cargo" | "rustc" => "rust-lang.org"
+	 Suggestions: [rust, rusts, rusty, rustic, Rusty]
+src/run.rs:208:15    - Unknown word (libpkgx)    -- match try_libpkgx_execution(
+	 Suggestions: [libpng, Libpng, limpkin]
+src/run.rs:228:8     - Unknown word (libpkgx)    -- fn try_libpkgx_execution(
+	 Suggestions: [libpng, Libpng, limpkin]
+src/run.rs:255:82    - Unknown word (shellenv)   -- set by Mise or other shellenv tools
+	 Suggestions: [shelled, sheller, shelley, suellen, shellers]
+src/run.rs:256:42    - Unknown word (GOROOT)     -- == "go" && (key == "GOROOT" || key == "GOPATH"
+	 Suggestions: [GROT, GODOT, Godot, COROT, Corot]
+src/run.rs:256:61    - Unknown word (GOPATH)     -- "GOROOT" || key == "GOPATH") {
+	 Suggestions: [GATH, GOAT, GOTH, GOATS, GOPAK]
+src/run.rs:268:55    - Unknown word (libpkgx)    -- resolve_package_with_libpkgx(&[tool_spec]) {
+	 Suggestions: [libpng, Libpng, limpkin]
+src/run.rs:274:26    - Unknown word (GOROOT)     -- // Overwrite GOROOT for Go installations
+	 Suggestions: [GROT, GODOT, Godot, COROT, Corot]
+src/run.rs:274:90    - Unknown word (shellenv)   -- conflicts with Mise or other shellenv tools
+	 Suggestions: [shelled, sheller, shelley, suellen, shellers]
+src/run.rs:279:30    - Unknown word (GOROOT)     -- "GOROOT".to_string(),
+	 Suggestions: [GROT, GODOT, Godot, COROT, Corot]
+src/run.rs:306:58    - Unknown word (libpkgx)    -- resolved package with libpkgx");
+	 Suggestions: [libpng, Libpng, limpkin]
+src/run.rs:324:58    - Unknown word (libpkgx)    -- execute command with libpkgx")?;
+	 Suggestions: [libpng, Libpng, limpkin]
+src/run.rs:389:14    - Unknown word (indicatif)  -- bar: indicatif::ProgressBar,
+	 Suggestions: [indicate, indicated, indicates, indicator, indicating]
+src/run.rs:394:23    - Unknown word (indicatif)  -- let bar = indicatif::ProgressBar::new(0
+	 Suggestions: [indicate, indicated, indicates, indicator, indicating]
+src/run.rs:396:17    - Unknown word (indicatif)  -- indicatif::ProgressStyle::with
+	 Suggestions: [indicate, indicated, indicates, indicator, indicating]
+src/run.rs:418:20    - Unknown word (rusqlite)   -- let mut conn = rusqlite::Connection::open(&config
+	 Suggestions: [ruralite, sqlite, SQLite, uralite, ursuline]
+src/run.rs:428:21    - Unknown word (reqs)       -- let mut package_reqs = Vec::new();
+	 Suggestions: [re's, rebs, recs, reds, refs]
+src/run.rs:431:32    - Unknown word (reqs)       -- Ok(req) => package_reqs.push(req),
+	 Suggestions: [re's, rebs, recs, reds, refs]
+src/run.rs:439:16    - Unknown word (reqs)       -- if package_reqs.is_empty() {
+	 Suggestions: [re's, rebs, recs, reds, refs]
+src/run.rs:443:55    - Unknown word (reqs)       -- hydrate::hydrate(&package_reqs, |project| {
+	 Suggestions: [re's, rebs, recs, reds, refs]
+src/run.rs:621:41    - Unknown word (rustc)      -- map_tool_to_project("rustc"), "rust-lang.org")
+	 Suggestions: [rust, rusts, rusty, rustic, Rusty]
+src/utils/linux_info.rs:5:15      - Unknown word (Distro)     -- pub enum LinuxDistro {
+	 Suggestions: [Distr, Distort, Dist, Disco, Ditto]
+src/utils/linux_info.rs:13:15     - Unknown word (distro)     -- pub fn detect_distro() -> Result<LinuxDistro
+	 Suggestions: [distr, distort, dist, disco, ditto]
+src/utils/linux_info.rs:13:39     - Unknown word (Distro)     -- distro() -> Result<LinuxDistro> {
+	 Suggestions: [Distr, Distort, Dist, Disco, Ditto]
+src/utils/linux_info.rs:16:28     - Unknown word (Distro)     -- return Ok(LinuxDistro::Ubuntu);
+	 Suggestions: [Distr, Distort, Dist, Disco, Ditto]
+src/utils/linux_info.rs:18:28     - Unknown word (Distro)     -- return Ok(LinuxDistro::Alpine);
+	 Suggestions: [Distr, Distort, Dist, Disco, Ditto]
+src/utils/linux_info.rs:24:28     - Unknown word (Distro)     -- return Ok(LinuxDistro::Debian);
+	 Suggestions: [Distr, Distort, Dist, Disco, Ditto]
+src/utils/linux_info.rs:33:21     - Unknown word (distro)     -- matches!(detect_distro(), Ok(LinuxDistro::Ubuntu
+	 Suggestions: [distr, distort, dist, disco, ditto]
+src/utils/linux_info.rs:39:16     - Unknown word (distro)     -- detect_distro(),
+	 Suggestions: [distr, distort, dist, disco, ditto]
+src/utils/linux_info.rs:46:21     - Unknown word (distro)     -- matches!(detect_distro(), Ok(LinuxDistro::Alpine
+	 Suggestions: [distr, distort, dist, disco, ditto]
+src/utils/linux_info.rs:54:19     - Unknown word (distro)     -- fn test_linux_distro_enum() {
+	 Suggestions: [distr, distort, dist, disco, ditto]
+tests/apk_test.rs:4:17      - Unknown word (picolayer)  -- use common::run_picolayer;
+	 Suggestions: [player, picoline, pillager]
+tests/apk_test.rs:22:22     - Unknown word (picolayer)  -- let output = run_picolayer(&["apk", "curl"]);
+	 Suggestions: [player, picoline, pillager]
+tests/apk_test.rs:53:22     - Unknown word (picolayer)  -- let output = run_picolayer(&["apk", "curl,git"
+	 Suggestions: [player, picoline, pillager]
+tests/apt_get_test.rs:4:17      - Unknown word (picolayer)  -- use common::run_picolayer;
+	 Suggestions: [player, picoline, pillager]
+tests/apt_get_test.rs:33:22     - Unknown word (picolayer)  -- let output = run_picolayer(&["apt-get", "file"
+	 Suggestions: [player, picoline, pillager]
+tests/apt_get_test.rs:51:22     - Unknown word (ppas)       -- fn test_apt_get_with_ppas() {
+	 Suggestions: [paps, pas, peas, ppam, pyas]
+tests/apt_get_test.rs:63:22     - Unknown word (picolayer)  -- let output = run_picolayer(&["apt-get", "file"
+	 Suggestions: [player, picoline, pillager]
+tests/apt_get_test.rs:63:56     - Unknown word (ppas)       -- apt-get", "file", "--ppas", "ppa:git-core/ppa
+	 Suggestions: [paps, pas, peas, ppam, pyas]
+tests/apt_get_test.rs:94:22     - Unknown word (picolayer)  -- let output = run_picolayer(&["apt-get", "-s",
+	 Suggestions: [player, picoline, pillager]
+tests/apt_get_test.rs:136:22    - Unknown word (picolayer)  -- let output = run_picolayer(&["apt-get", "update
+	 Suggestions: [player, picoline, pillager]
+tests/brew_test.rs:3:17      - Unknown word (picolayer)  -- use common::run_picolayer;
+	 Suggestions: [player, picoline, pillager]
+tests/brew_test.rs:22:22     - Unknown word (picolayer)  -- let output = run_picolayer(&["brew", "jq"]);
+	 Suggestions: [player, picoline, pillager]
+tests/brew_test.rs:50:22     - Unknown word (picolayer)  -- let output = run_picolayer(&["brew", "jq,tree"
+	 Suggestions: [player, picoline, pillager]
+tests/common/mod.rs:6:17      - Unknown word (picolayer)  -- /// Path to the picolayer binary for testing
+	 Suggestions: [player, picoline, pillager]
+tests/common/mod.rs:8:11      - Unknown word (PICOLAYER)  -- pub const PICOLAYER_BIN: &str = env!("CARGO
+	 Suggestions: [PLAYER, PICOLINE, PILLAGER]
+tests/common/mod.rs:8:53      - Unknown word (picolayer)  -- env!("CARGO_BIN_EXE_picolayer");
+	 Suggestions: [player, picoline, pillager]
+tests/common/mod.rs:10:9      - Unknown word (picolayer)  -- /// Run picolayer with the given arguments
+	 Suggestions: [player, picoline, pillager]
+tests/common/mod.rs:12:12     - Unknown word (picolayer)  -- pub fn run_picolayer(args: &[&str]) -> std
+	 Suggestions: [player, picoline, pillager]
+tests/common/mod.rs:13:18     - Unknown word (PICOLAYER)  -- Command::new(PICOLAYER_BIN)
+	 Suggestions: [PLAYER, PICOLINE, PILLAGER]
+tests/common/mod.rs:16:36     - Unknown word (picolayer)  -- expect("Failed to execute picolayer")
+	 Suggestions: [player, picoline, pillager]
+tests/gh_release_test.rs:3:75      - Unknown word (picolayer)  -- transient_error, run_picolayer};
+	 Suggestions: [player, picoline, pillager]
+tests/gh_release_test.rs:7:9       - Unknown word (pkgx)       -- fn test_pkgx_github_release_installation
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+tests/gh_release_test.rs:11:22     - Unknown word (picolayer)  -- let output = run_picolayer(&[
+	 Suggestions: [player, picoline, pillager]
+tests/gh_release_test.rs:13:10     - Unknown word (pkgxdev)    -- "pkgxdev/pkgx",
+	 Suggestions: [pkgadd]
+tests/gh_release_test.rs:13:18     - Unknown word (pkgx)       -- "pkgxdev/pkgx",
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+tests/gh_release_test.rs:14:10     - Unknown word (pkgx)       -- "pkgx",
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+tests/gh_release_test.rs:36:10     - Unknown word (pkgx)       -- "pkgx installation failed
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+tests/gh_release_test.rs:40:35     - Unknown word (pkgx)       -- binary_path = format!("{}/pkgx", bin_location);
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+tests/gh_release_test.rs:54:9      - Unknown word (lazygit)    -- fn test_lazygit_specific_version_installation
+	 Suggestions: [lait, lazy, lazio, layout, lazuli]
+tests/gh_release_test.rs:58:22     - Unknown word (picolayer)  -- let output = run_picolayer(&[
+	 Suggestions: [player, picoline, pillager]
+tests/gh_release_test.rs:60:10     - Unknown word (jesseduffield) -- "jesseduffield/lazygit",
+	 Suggestions: []
+tests/gh_release_test.rs:60:24     - Unknown word (lazygit)       -- "jesseduffield/lazygit",
+	 Suggestions: [lait, lazy, lazio, layout, lazuli]
+tests/gh_release_test.rs:61:10     - Unknown word (lazygit)       -- "lazygit",
+	 Suggestions: [lait, lazy, lazio, layout, lazuli]
+tests/gh_release_test.rs:83:10     - Unknown word (lazygit)       -- "lazygit v0.54.0 installation
+	 Suggestions: [lait, lazy, lazio, layout, lazuli]
+tests/gh_release_test.rs:87:35     - Unknown word (lazygit)       -- binary_path = format!("{}/lazygit", bin_location);
+	 Suggestions: [lait, lazy, lazio, layout, lazuli]
+tests/gh_release_test.rs:105:22    - Unknown word (picolayer)     -- let output = run_picolayer(&[
+	 Suggestions: [player, picoline, pillager]
+tests/gh_release_test.rs:107:10    - Unknown word (jesseduffield) -- "jesseduffield/lazygit",
+	 Suggestions: []
+tests/gh_release_test.rs:154:22    - Unknown word (picolayer)     -- let output = run_picolayer(&[
+	 Suggestions: [player, picoline, pillager]
+tests/gh_release_test.rs:156:10    - Unknown word (pkgxdev)       -- "pkgxdev/pkgx",
+	 Suggestions: [pkgadd]
+tests/gh_release_test.rs:203:10    - Unknown word (pkgxdev)       -- "pkgxdev/pkgx",
+	 Suggestions: [pkgadd]
+tests/gh_release_test.rs:251:10    - Unknown word (pkgxdev)       -- "pkgxdev/pkgx",
+	 Suggestions: [pkgadd]
+tests/gh_release_test.rs:290:10    - Unknown word (pkgxdev)       -- "pkgxdev/pkgx",
+	 Suggestions: [pkgadd]
+tests/main_test.rs:3:17      - Unknown word (picolayer)  -- use common::run_picolayer;
+	 Suggestions: [player, picoline, pillager]
+tests/main_test.rs:7:22      - Unknown word (picolayer)  -- let output = run_picolayer(&["--help"]);
+	 Suggestions: [player, picoline, pillager]
+tests/main_test.rs:10:30     - Unknown word (picolayer)  -- assert!(stdout.contains("picolayer"));
+	 Suggestions: [player, picoline, pillager]
+tests/main_test.rs:16:22     - Unknown word (picolayer)  -- let output = run_picolayer(&["--version"]);
+	 Suggestions: [player, picoline, pillager]
+tests/main_test.rs:19:30     - Unknown word (picolayer)  -- assert!(stdout.contains("picolayer"));
+	 Suggestions: [player, picoline, pillager]
+tests/run_test.rs:3:33      - Unknown word (picolayer)  -- {binary_exists, run_picolayer};
+	 Suggestions: [player, picoline, pillager]
+tests/run_test.rs:8:9       - Unknown word (picolayer)  -- fn test_picolayer_run_python_version(
+	 Suggestions: [player, picoline, pillager]
+tests/run_test.rs:9:22      - Unknown word (picolayer)  -- let output = run_picolayer(&["run", "python@3.
+	 Suggestions: [player, picoline, pillager]
+tests/run_test.rs:16:9      - Unknown word (picolayer)  -- fn test_picolayer_run_node_version()
+	 Suggestions: [player, picoline, pillager]
+tests/run_test.rs:17:22     - Unknown word (picolayer)  -- let output = run_picolayer(&["run", "node@18",
+	 Suggestions: [player, picoline, pillager]
+tests/run_test.rs:181:34    - Unknown word (pkgx)       -- picolayer_run_with_force_pkgx() {
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+tests/run_test.rs:182:76    - Unknown word (pkgx)       -- , "world", "--force-pkgx"]);
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+tests/run_test.rs:193:30    - Unknown word (rustc)      -- assert!(stdout.contains("rustc 1.70"));
+	 Suggestions: [rust, rusts, rusty, rustic, Rusty]
+tests/run_test.rs:229:9     - Unknown word (pkgx)       -- fn test_pkgx_xz_installation_end
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+tests/run_test.rs:241:14    - Unknown word (pkgxdev)    -- "pkgxdev/pkgx",
+	 Suggestions: [pkgadd]
+tests/run_test.rs:241:22    - Unknown word (pkgx)       -- "pkgxdev/pkgx",
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+tests/run_test.rs:242:14    - Unknown word (pkgx)       -- "pkgx",
+	 Suggestions: [pkgs, pkg, paxg, page, payx]
+CSpell: Files checked: 27, Issues found: 182 in 20 files.
+
+
+You can skip this misspellings by defining the following .cspell.json file at the root of your repository
+Of course, please correct real typos before :)
+
+{
+    "version": "0.2",
+    "language": "en",
+    "ignorePaths": [
+        "**/node_modules/**",
+        "**/vscode-extension/**",
+        "**/.git/**",
+        "**/.pnpm-lock.json",
+        ".vscode",
+        "package-lock.json",
+        "megalinter-reports"
+    ],
+    "words": [
+        "Buildx",
+        "Clippy",
+        "Distro",
+        "GOPATH",
+        "GOROOT",
+        "PICOLAYER",
+        "Picolayer",
+        "armv",
+        "buildx",
+        "clippy",
+        "distro",
+        "dtolnay",
+        "elif",
+        "flate",
+        "gofmt",
+        "indicatif",
+        "javac",
+        "jesseduffield",
+        "lazygit",
+        "libpkgx",
+        "lzma",
+        "nanolayer",
+        "picolayer",
+        "pkgm",
+        "pkgx",
+        "pkgxdev",
+        "ppas",
+        "pyproject",
+        "reqs",
+        "reqwest",
+        "rusqlite",
+        "rustc",
+        "rustls",
+        "serde",
+        "shellenv",
+        "skevetter",
+        "softprops",
+        "walkdir",
+        "webpki"
+    ]
+}
+
+
+You can also copy-paste megalinter-reports/.cspell.json at the root of your repository

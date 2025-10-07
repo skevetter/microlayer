@@ -1,0 +1,99 @@
+Results of jscpd linter (version 4.0.5)
+See documentation on https://megalinter.io/9.0.1/descriptors/copypaste_jscpd/
+-----------------------------------------------
+
+❌ [ERROR] for workspace /github/workspace
+Linter raw log:
+Clone found (rust):
+ - tests/gh_release_test.rs [63:10 - 83:42] (20 lines, 127 tokens)
+   tests/gh_release_test.rs [16:9 - 36:31]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [101:34 - 110:9] (9 lines, 77 tokens)
+   tests/gh_release_test.rs [54:43 - 63:10]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [113:13 - 131:55] (18 lines, 119 tokens)
+   tests/gh_release_test.rs [18:13 - 36:31]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [210:7 - 228:43] (18 lines, 119 tokens)
+   tests/gh_release_test.rs [18:13 - 36:31]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [245:37 - 254:9] (9 lines, 77 tokens)
+   tests/gh_release_test.rs [7:38 - 16:9]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [279:47 - 288:14] (9 lines, 107 tokens)
+   tests/run_test.rs [229:37 - 238:4]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [317:40 - 331:15] (14 lines, 129 tokens)
+   tests/run_test.rs [229:37 - 293:9]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [356:12 - 381:2] (25 lines, 183 tokens)
+   tests/gh_release_test.rs [281:2 - 307:4]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [392:42 - 401:61] (9 lines, 101 tokens)
+   tests/run_test.rs [229:37 - 238:4]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [402:5 - 422:2] (20 lines, 133 tokens)
+   tests/gh_release_test.rs [288:5 - 383:3]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [435:5 - 443:6] (8 lines, 97 tokens)
+   tests/run_test.rs [230:5 - 238:7]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [469:5 - 499:2] (30 lines, 229 tokens)
+   tests/run_test.rs [225:2 - 307:4]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [515:19 - 539:46] (24 lines, 208 tokens)
+   tests/run_test.rs [229:37 - 303:39]
+
+Clone found (rust):
+ - tests/gh_release_test.rs [549:38 - 562:43] (13 lines, 93 tokens)
+   tests/gh_release_test.rs [7:38 - 258:27]
+
+Clone found (rust):
+ - src/run.rs [542:2 - 552:38] (10 lines, 80 tokens)
+   src/run.rs [314:2 - 324:41]
+
+Clone found (rust):
+ - src/gh_release.rs [234:19 - 251:9] (17 lines, 224 tokens)
+   src/gh_release.rs [199:34 - 216:30]
+
+Clone found (rust):
+ - src/gh_release.rs [445:9 - 454:3] (9 lines, 93 tokens)
+   src/gh_release.rs [420:21 - 429:2]
+
+Clone found (rust):
+ - src/gh_release.rs [566:5 - 583:18] (17 lines, 138 tokens)
+   src/gh_release.rs [303:5 - 320:17]
+
+┌──────────┬────────────────┬─────────────┬──────────────┬──────────────┬──────────────────┬───────────────────┐
+│ Format   │ Files analyzed │ Total lines │ Total tokens │ Clones found │ Duplicated lines │ Duplicated tokens │
+├──────────┼────────────────┼─────────────┼──────────────┼──────────────┼──────────────────┼───────────────────┤
+│ rust     │ 16             │ 3199        │ 25545        │ 18           │ 279 (8.72%)      │ 2334 (9.14%)      │
+├──────────┼────────────────┼─────────────┼──────────────┼──────────────┼──────────────────┼───────────────────┤
+│ bash     │ 1              │ 13          │ 66           │ 0            │ 0 (0%)           │ 0 (0%)            │
+├──────────┼────────────────┼─────────────┼──────────────┼──────────────┼──────────────────┼───────────────────┤
+│ markdown │ 1              │ 26          │ 179          │ 0            │ 0 (0%)           │ 0 (0%)            │
+├──────────┼────────────────┼─────────────┼──────────────┼──────────────┼──────────────────┼───────────────────┤
+│ Total:   │ 18             │ 3238        │ 25790        │ 18           │ 279 (8.62%)      │ 2334 (9.05%)      │
+└──────────┴────────────────┴─────────────┴──────────────┴──────────────┴──────────────────┴───────────────────┘
+Found 18 clones.
+HTML report saved to megalinter-reports/copy-paste/html/
+ERROR: jscpd found too many duplicates (8.62%) over threshold (0%)
+Error: ERROR: jscpd found too many duplicates (8.62%) over threshold (0%)
+    at ThresholdReporter.report (/node-deps/node_modules/@jscpd/finder/dist/index.js:612:13)
+    at /node-deps/node_modules/@jscpd/finder/dist/index.js:110:18
+    at Array.forEach (<anonymous>)
+    at /node-deps/node_modules/@jscpd/finder/dist/index.js:109:22
+    at async /node-deps/node_modules/jscpd/dist/jscpd.js:351:5
+

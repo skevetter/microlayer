@@ -15,13 +15,13 @@ This project is inspired by the [nanolayer](https://github.com/devcontainers-ext
 
 ## Installation
 
-### From source (requires Rust):
+### From source (requires Rust)
 
 ```bash
 cargo install --git https://github.com/skevetter/picolayer
 ```
 
-### From binary:
+### From binary
 
 Download the latest release from the [releases page](https://github.com/skevetter/picolayer/releases).
 
@@ -149,7 +149,7 @@ The `run` command automatically detects dependencies from your project files:
 
 ## Docker Example
 
-### Before (without picolayer):
+### Before (without picolayer)
 
 ```dockerfile
 FROM ubuntu:22.04
@@ -158,7 +158,7 @@ RUN apt-get update && apt-get install -y htop curl
 
 Layer size: **~25MB**
 
-### After (with picolayer):
+### After (with picolayer)
 
 ```dockerfile
 FROM ubuntu:22.04

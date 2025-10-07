@@ -1,0 +1,8 @@
+Results of hadolint linter (version 2.13.1)
+See documentation on https://megalinter.io/9.0.1/descriptors/dockerfile_hadolint/
+-----------------------------------------------
+
+❌ [ERROR] for workspace /github/workspace
+Linter raw log:
+Dockerfile:6 DL3008 warning: Pin versions in apt get install. Instead of `apt-get install <package>` use `apt-get install <package>=<version>`
+
