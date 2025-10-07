@@ -1,5 +1,6 @@
 mod common;
 
+#[cfg(target_os = "macos")]
 use common::run_picolayer;
 
 #[cfg(target_os = "macos")]
