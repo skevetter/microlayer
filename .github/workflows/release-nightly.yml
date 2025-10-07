@@ -69,8 +69,8 @@ jobs:
         run: |
           SIZE="$(stat -c%s "target/${{ matrix.target }}/release/picolayer" 2>/dev/null || stat -f%z "target/${{ matrix.target }}/release/picolayer")"
           echo "Binary size: $SIZE bytes"
-          if [ "$SIZE" -gt 20000000 ]; then
-            echo "Error: Binary size exceeds 20MB"
+          if [ "$SIZE" -gt 10000000 ]; then
+            echo "Error: Binary size exceeds 10MB"
             exit 1
           fi
 
