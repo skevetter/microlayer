@@ -679,7 +679,6 @@ impl<'a> GpgVerifier<'a> {
 
         let key_data = if key_content.starts_with("http://") || key_content.starts_with("https://")
         {
-            // Download GPG key from URL
             println!("Downloading GPG public key from URL...");
             let response = self
                 .client
