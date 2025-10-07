@@ -12,4 +12,5 @@ COPY picolayer /usr/local/bin/picolayer
 RUN chmod +x /usr/local/bin/picolayer
 
 ENTRYPOINT ["/usr/local/bin/picolayer"]
+
 CMD ["--help"]
