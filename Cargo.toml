@@ -30,3 +30,4 @@ tar = "0.4.44"
 tempfile = "3.23.0"
 tokio = { version = "1.47.1", features = ["rt", "rt-multi-thread"] }
 walkdir = "2.5.0"
+xz = "0.1.0"

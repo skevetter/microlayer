@@ -1,6 +1,11 @@
-use crate::common::run_picolayer;
+mod common;
+
+#[cfg(target_os = "linux")]
+use common::run_picolayer;
+#[cfg(target_os = "linux")]
 use std::process::Command;
 
+#[cfg(target_os = "linux")]
 fn stderr_indicates_permission_issue(output: &std::process::Output) -> bool {
     let stderr = String::from_utf8_lossy(&output.stderr).to_lowercase();
     stderr.contains("permission denied")

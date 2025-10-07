@@ -252,6 +252,10 @@ fn try_libpkgx_execution(
     let mut cmd_env = HashMap::new();
 
     for (key, value) in env::vars() {
+        // Overwrite Go environment variables that might be set by Mise or other shellenv tools
+        if tool_name == "go" && (key == "GOROOT" || key == "GOPATH") {
+            continue;
+        }
         cmd_env.insert(key, value);
     }
 
@@ -265,6 +269,19 @@ fn try_libpkgx_execution(
         Ok((pkgx_env, installations)) => {
             for (key, value) in pkgx_env {
                 cmd_env.insert(key, value);
+            }
+
+            // Overwrite GOROOT for Go installations due to conflicts with Mise or other shellenv tools
+            if tool_name == "go" {
+                for installation in &installations {
+                    if installation.pkg.project == project_name {
+                        cmd_env.insert(
+                            "GOROOT".to_string(),
+                            installation.path.to_string_lossy().to_string(),
+                        );
+                        break;
+                    }
+                }
             }
 
             for installation in &installations {

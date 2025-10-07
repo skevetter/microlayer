@@ -1,4 +1,6 @@
-use crate::common::run_picolayer;
+mod common;
+
+use common::run_picolayer;
 
 #[test]
 fn test_main_help() {

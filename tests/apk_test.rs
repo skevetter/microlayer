@@ -1,4 +1,8 @@
-use crate::common::run_picolayer;
+mod common;
+
+#[cfg(target_os = "linux")]
+use common::run_picolayer;
+#[cfg(target_os = "linux")]
 use std::process::Command;
 
 #[test]
@@ -55,4 +59,10 @@ fn test_apk_multiple_packages() {
             return;
         }
     }
+
+    assert!(
+        output.status.success(),
+        "apk multiple packages installation failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
