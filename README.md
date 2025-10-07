@@ -1,21 +1,20 @@
-# picolayer
+# Picolayer
 
-A minimal container layer management tool. Picolayer helps keep container layers as small as possible by automatically cleaning up installation leftovers such as apt-get update lists, caches, and temporary files.
+A minimal container layer management tool. Picolayer helps keep container layers small by automatically cleaning up installation leftovers such as apt-get update lists, caches, and temporary files.
 
-This project is inspired by the [nanolayer](https://github.com/devcontainers-extra/nanolayer) repository, which is no longer actively maintained.
+This project is inspired by the [nanolayer](https://github.com/devcontainers-extra/nanolayer) repository.
 
-## Features
+## Commands
 
 - **apt-get**: Install Debian/Ubuntu packages with automatic cleanup
 - **apk**: Install Alpine packages with automatic cleanup
 - **brew**: Install packages using Homebrew
 - **gh-release**: Install binaries from GitHub releases with checksum and GPG verification
 - **run**: Execute commands with pkgx for automatic dependency management
-- **Minimal footprint**: Optimized for small binary size and minimal dependencies
 
 ## Installation
 
-### From source (requires Rust)
+### From source
 
 ```bash
 cargo install --git https://github.com/skevetter/picolayer
@@ -29,7 +28,7 @@ Download the latest release from the [releases page](https://github.com/skevette
 
 ### Install apt-get packages
 
-Install packages with automatic cleanup:
+Install packages:
 
 ```bash
 picolayer apt-get htop,curl,git
@@ -105,20 +104,21 @@ Run any version of any tool using pkgx for automatic dependency management:
 
 ```bash
 # Run specific versions
-picolayer run "python@3.11" --version
-picolayer run "node@18" --version
+picolayer run python@3.11 --version
+
+picolayer run node@18 --version
 ```
 
 Run with working directory:
 
 ```bash
-picolayer run "python" script.py --working-dir /path/to/project
+picolayer run python script.py --working-dir /path/to/project
 ```
 
 Run with environment variables:
 
 ```bash
-picolayer run "python" app.py --env "DEBUG=1" --env "PORT=8000"
+picolayer run python app.py --env "DEBUG=1" --env "PORT=8000"
 ```
 
 Run in ephemeral mode (cleanup packages after execution):
@@ -139,20 +139,13 @@ Delete pkgx installation:
 picolayer run --delete
 ```
 
-The `run` command automatically detects dependencies from your project files:
-- `package.json` → Node.js
-- `requirements.txt`, `pyproject.toml` → Python
-- `Cargo.toml` → Rust
-- `go.mod` → Go
-- `Gemfile` → Ruby
-- And more...
-
 ## Docker Example
 
 ### Before (without picolayer)
 
 ```dockerfile
 FROM ubuntu:22.04
+
 RUN apt-get update && apt-get install -y htop curl
 ```
 
@@ -162,7 +155,9 @@ Layer size: **~25MB**
 
 ```dockerfile
 FROM ubuntu:22.04
+
 COPY picolayer /usr/local/bin/picolayer
+
 RUN picolayer apt-get htop,curl
 ```
 
@@ -172,6 +167,7 @@ Or download directly in the Dockerfile:
 
 ```dockerfile
 FROM ubuntu:22.04
+
 RUN curl -sfL https://github.com/skevetter/picolayer/releases/latest/download/picolayer-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin && \
     picolayer apt-get htop,curl && \
     rm /usr/local/bin/picolayer
@@ -182,8 +178,6 @@ RUN curl -sfL https://github.com/skevetter/picolayer/releases/latest/download/pi
 ```bash
 cargo build --release
 ```
-
-The binary will be in `target/release/picolayer`.
 
 ## License
 
