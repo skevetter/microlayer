@@ -31,13 +31,13 @@ jobs:
         uses: ./.github/actions/build-release
 
       - name: Run tests
-        run: ./hack/test.sh
+        run: cargo test
 
       - name: Check binary size
         run: |
           SIZE=$(stat -c%s "target/release/picolayer")
           echo "Binary size: $SIZE bytes"
-          if [ "$SIZE" -gt 10000000 ]; then  # 10MB
+          if [ "$SIZE" -gt 10000000 ]; then
             echo "Warning: Binary size exceeds 10MB"
             exit 1
           fi

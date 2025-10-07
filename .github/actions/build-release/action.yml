@@ -5,20 +5,10 @@ inputs:
     description: 'Target triple for cross-compilation'
     required: false
     default: ''
-  use-cross:
-    description: 'Use cross for cross-compilation'
-    required: false
-    default: 'false'
 runs:
   using: 'composite'
   steps:
-    - name: Install cross
-      if: inputs.use-cross == 'true'
-      shell: bash
-      run: cargo install cross --git https://github.com/cross-rs/cross
-
     - name: Build with cargo
-      if: inputs.use-cross == 'false'
       shell: bash
       run: |
         if [ -n "${{ inputs.target }}" ]; then
@@ -26,8 +16,3 @@ runs:
         else
           cargo build --release
         fi
-
-    - name: Build with cross
-      if: inputs.use-cross == 'true'
-      shell: bash
-      run: cross build --release --target ${{ inputs.target }}

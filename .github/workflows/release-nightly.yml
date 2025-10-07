@@ -22,16 +22,12 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            cross: false
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
-            cross: true
           - target: x86_64-apple-darwin
             os: macos-latest
-            cross: false
           - target: aarch64-apple-darwin
             os: macos-latest
-            cross: false
 
     steps:
       - uses: actions/checkout@v5
@@ -58,22 +54,21 @@ jobs:
           path: target
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install cross
-        if: matrix.cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Install dependencies for cross-compilation (Linux aarch64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build
-        run: |
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }}
-          else
-            cargo build --release --target ${{ matrix.target }}
-          fi
+        run: cargo build --release --target ${{ matrix.target }}
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
       - name: Check binary size
         run: |
           SIZE="$(stat -c%s "target/${{ matrix.target }}/release/picolayer" 2>/dev/null || stat -f%z "target/${{ matrix.target }}/release/picolayer")"
-          echo "Binary size: \"$SIZE\" bytes"
+          echo "Binary size: $SIZE bytes"
           if [ "$SIZE" -gt 20000000 ]; then
             echo "Error: Binary size exceeds 20MB"
             exit 1
@@ -109,9 +104,9 @@ jobs:
           VERSION="$(grep '^version = ' Cargo.toml | head -1 | cut -d'"' -f2)"
           TAG="v${VERSION}-nightly.$(date +"%Y%m%d")"
           BUILD_DATE="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
-          echo "tag=\"${TAG}\"" >> "$GITHUB_OUTPUT"
-          echo "date=\"${BUILD_DATE}\"" >> "$GITHUB_OUTPUT"
-          echo "Nightly tag: \"${TAG}\""
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "date=${BUILD_DATE}" >> "$GITHUB_OUTPUT"
+          echo "Nightly tag: ${TAG}"
 
       - name: Delete existing nightly release
         run: |
@@ -129,7 +124,7 @@ jobs:
           prerelease: true
           generate_release_notes: false
           body: |
-            ⚠️ **Nightly Build** - Automated development build from the main branch
+            Nightly Build - Automated development build from the main branch
 
             This is a nightly pre-release build and may be unstable.
 

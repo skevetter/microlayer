@@ -45,3 +45,41 @@ pub fn execute_status(cmd: &str) -> Result<i32> {
 
     Ok(status.code().unwrap_or(-1))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_execute_status_true() {
+        let result = execute_status("true");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn test_execute_status_false() {
+        let result = execute_status("false");
+        assert!(result.is_ok());
+        assert_ne!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn test_execute_with_output_echo() {
+        let result = execute_with_output("echo hello", false);
+        assert!(result.is_ok());
+        assert!(result.unwrap().contains("hello"));
+    }
+
+    #[test]
+    fn test_execute_success() {
+        let result = execute("true");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_execute_failure() {
+        let result = execute("false");
+        assert!(result.is_err());
+    }
+}
