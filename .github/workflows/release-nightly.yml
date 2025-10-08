@@ -116,17 +116,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create Nightly Release
+      - name: Nightly Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: Nightly ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
           draft: false
           prerelease: true
           generate_release_notes: false
           body: |
-            Nightly Build - Automated development build from the main branch
-
             This is a nightly pre-release build and may be unstable.
 
             For production use, please use the latest stable release.

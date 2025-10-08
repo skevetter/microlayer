@@ -22,6 +22,7 @@ flate2 = "1.1.4"
 hex = "0.4.3"
 indicatif = { version = "0.17" }
 libpkgx = { version = "0.7.0" }
+openssl = { version = "0.10", features = ["vendored"] }
 pgp = "0.17.0"
 regex = "1.11.3"
 reqwest = { version = "0.12.23", features = ["blocking", "json", "rustls-tls-webpki-roots"], default-features = false }
@@ -33,7 +34,6 @@ tempfile = "3.23.0"
 tokio = { version = "1.47.1", features = ["rt", "rt-multi-thread"] }
 walkdir = "2.5.0"
 xz = "0.1.0"
-openssl = { version = "0.10", features = ["vendored"] }
 
 [profile.release]
 strip = true

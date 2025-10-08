@@ -10,7 +10,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "picolayer")]
-#[command(about = "Ensures minimal container layers", long_about = None)]
+#[command(about = "Ensures minimal container layers")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
@@ -107,6 +107,10 @@ enum Commands {
     },
 }
 
+fn normalize_pkg_input(packages: String) -> Vec<String> {
+    packages.split(',').map(|s| s.trim().to_string()).collect()
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -116,22 +120,20 @@ fn main() -> Result<()> {
             ppas,
             force_ppas_on_non_ubuntu,
         } => {
-            let pkg_list: Vec<String> = packages.split(',').map(|s| s.trim().to_string()).collect();
-
-            let ppa_list: Option<Vec<String>> =
-                ppas.map(|p| p.split(',').map(|s| s.trim().to_string()).collect());
+            let pkg_list: Vec<String> = normalize_pkg_input(packages);
+            let ppa_list: Option<Vec<String>> = ppas.map(normalize_pkg_input);
 
             apt_get::install(&pkg_list, ppa_list.as_deref(), force_ppas_on_non_ubuntu)?;
         }
 
         Commands::Apk { packages } => {
-            let pkg_list: Vec<String> = packages.split(',').map(|s| s.trim().to_string()).collect();
+            let pkg_list: Vec<String> = normalize_pkg_input(packages);
 
             apk::install(&pkg_list)?;
         }
 
         Commands::Brew { packages } => {
-            let pkg_list: Vec<String> = packages.split(',').map(|s| s.trim().to_string()).collect();
+            let pkg_list: Vec<String> = normalize_pkg_input(packages);
 
             brew::install(&pkg_list)?;
         }
