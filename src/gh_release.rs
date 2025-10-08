@@ -28,40 +28,20 @@ struct Asset {
 }
 
 /// Configuration for installing a GitHub release
-struct InstallConfig<'a> {
-    repo: &'a str,
-    binary_names: &'a [String],
-    version: &'a str,
-    install_dir: &'a str,
-    filter: Option<&'a str>,
-    verify_checksum: bool,
-    checksum_text: Option<&'a str>,
-    gpg_key: Option<&'a str>,
+pub struct GhReleaseInput<'a> {
+    pub repo: &'a str,
+    pub binary_names: &'a [String],
+    pub version: &'a str,
+    pub install_dir: &'a str,
+    pub filter: Option<&'a str>,
+    pub verify_checksum: bool,
+    pub checksum_text: Option<&'a str>,
+    pub gpg_key: Option<&'a str>,
 }
 
 /// Install binaries from a GitHub release
-pub fn install(
-    repo: &str,
-    binary_names: &[String],
-    version: &str,
-    install_dir: &str,
-    filter: Option<&str>,
-    verify_checksum: bool,
-    checksum_text: Option<&str>,
-    gpg_key: Option<&str>,
-) -> Result<()> {
-    let config = InstallConfig {
-        repo,
-        binary_names,
-        version,
-        install_dir,
-        filter,
-        verify_checksum,
-        checksum_text,
-        gpg_key,
-    };
-
-    Installer::new().install(config)
+pub fn install(input: GhReleaseInput) -> Result<()> {
+    Installer::new().install(input)
 }
 
 struct Installer {
@@ -75,7 +55,7 @@ impl Installer {
         }
     }
 
-    fn install(&self, config: InstallConfig) -> Result<()> {
+    fn install(&self, config: GhReleaseInput) -> Result<()> {
         info!("Fetching release information for {}", config.repo);
         let release = self.fetch_release(config.repo, config.version)?;
         info!("Installing from release: {}", release.tag_name);
@@ -196,7 +176,6 @@ impl AssetSelector {
             return self.select_by_filter(assets, pattern);
         }
 
-        // First try to find a platform-specific asset that has a signature
         if let Some(asset) = self.select_by_platform_with_signature(assets) {
             return Ok(asset);
         }
@@ -489,10 +468,12 @@ impl<'a> AssetVerifier<'a> {
     fn verify_with_checksum_text(&self, asset: &Asset, checksum_text: &str) -> Result<()> {
         info!("Verifying asset with provided checksum text...");
 
-        // Parse checksum text format: "algorithm:hash"
+        // Expects checksum text format: "algorithm:hash"
         let parts: Vec<&str> = checksum_text.splitn(2, ':').collect();
         if parts.len() != 2 {
-            anyhow::bail!("Invalid checksum text format. Expected 'algorithm:hash' (e.g., 'sha256:abc123...')");
+            anyhow::bail!(
+                "Invalid checksum text format. Expected 'algorithm:hash' (e.g., 'sha256:abc123...')"
+            );
         }
 
         let algorithm = parts[0].to_lowercase();
@@ -883,11 +864,11 @@ mod tests {
     fn test_asset_installer_is_tar_xz_archive() {
         let client = Client::new();
         let installer = AssetInstaller::new(&client);
-        
+
         // XZ magic bytes: 0xFD, '7', 'z', 'X', 'Z', 0x00
         let xz_data = vec![0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00];
         assert!(installer.is_tar_xz_archive(&xz_data));
-        
+
         let not_xz_data = vec![0x00, 0x01, 0x02, 0x03, 0x04, 0x05];
         assert!(!installer.is_tar_xz_archive(&not_xz_data));
     }

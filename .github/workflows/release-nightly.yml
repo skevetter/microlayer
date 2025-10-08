@@ -28,16 +28,16 @@ jobs:
         run: |
           # Get the latest release tag
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          
+
           if [ -z "$LATEST_TAG" ]; then
             echo "No previous releases found, building nightly"
             echo "should_build=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          
+
           # Check if there are new commits since the last release
           COMMITS_SINCE_RELEASE=$(git rev-list ${LATEST_TAG}..HEAD --count)
-          
+
           if [ "$COMMITS_SINCE_RELEASE" -gt 0 ]; then
             echo "Found $COMMITS_SINCE_RELEASE new commits since $LATEST_TAG"
             echo "should_build=true" >> "$GITHUB_OUTPUT"

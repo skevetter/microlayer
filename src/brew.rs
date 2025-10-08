@@ -14,7 +14,7 @@ pub fn install(packages: &[String]) -> Result<()> {
 
     if !brew_available {
         anyhow::bail!(
-            "Homebrew is not available. Please install Homebrew from https://brew.sh\n\
+            "Homebrew is not available. Install Homebrew from https://brew.sh\n\
              Installation: /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
         );
     }
@@ -69,11 +69,8 @@ mod tests {
 
     #[test]
     fn test_install_function_exists() {
-        // Test that the install function can be called (will fail if brew not available)
         let packages = vec!["nonexistent-package-12345".to_string()];
         let result = install(&packages);
-        // We expect this to fail if brew is not available or package doesn't exist
-        // This test just ensures the function signature is correct
         let _ = result;
     }
 }

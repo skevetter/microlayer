@@ -166,11 +166,11 @@ fn test_picolayer_run_ruby_inline() {
 fn test_picolayer_run_with_env_vars() {
     let output = run_picolayer(&[
         "run",
+        "--env",
+        "TEST_VAR=hello_world",
         "python",
         "-c",
         "import os; print(f'TEST_VAR={os.environ.get(\"TEST_VAR\", \"not found\")}')",
-        "--env",
-        "TEST_VAR=hello_world",
     ]);
     let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -242,7 +242,7 @@ fn test_pkgx_xz_installation_end_to_end() {
             "pkgx",
             "--version",
             "v2.7.0",
-            "--bin-location",
+            "--install-dir",
             bin_location,
             "--filter",
             &format!("{}.*x86-64\\.tar\\.xz", os),

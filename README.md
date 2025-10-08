@@ -139,12 +139,6 @@ Ignore local dependencies and force use of pkgx:
 picolayer run "python" script.py --ignore-local-dependencies
 ```
 
-Uninstall pkgx and remove all cache/data files:
-
-```bash
-picolayer run --keep-pkgx
-```
-
 **Note**: By default, picolayer now cleans up packages after execution to minimize disk usage. Use `--keep-package` to preserve them.
 
 ## Docker Example

@@ -70,7 +70,7 @@ pub fn uninstall_pkgx() -> Result<()> {
     }
 
     info!("Uninstall Summary:");
-    info!("Successfully removed: {} items", removed_count);
+    info!("Removed: {} items", removed_count);
     if error_count > 0 {
         warn!("Failed to remove: {} items", error_count);
         info!("Some files may require sudo privileges to remove");
@@ -121,8 +121,7 @@ pub fn execute(
     args: &[String],
     working_dir: &str,
     env_vars: &[String],
-    _force_pkgx: bool,
-    ephemeral: bool,
+    keep_package: bool,
 ) -> Result<()> {
     let working_path = Path::new(working_dir);
     if !working_path.exists() {
@@ -139,8 +138,8 @@ pub fn execute(
     );
     info!("Working directory: {}", working_dir);
 
-    if ephemeral {
-        info!("Ephemeral mode: packages will be removed after execution");
+    if !keep_package {
+        info!("packages will be removed after execution");
     }
 
     let mut env_map = Vec::new();
@@ -155,20 +154,18 @@ pub fn execute(
         }
     }
 
-    if _force_pkgx || !check_pkgx_binary() {
-        {
-            return execute_with_pkgx_library(
-                &tool_name,
-                &version_spec,
-                args,
-                working_path,
-                &env_map,
-                ephemeral,
-            );
-        }
+    if check_pkgx_binary() {
+        return execute_with_pkgx_binary(&tool_name, &version_spec, args, working_path, &env_map);
     }
 
-    execute_with_pkgx_binary(&tool_name, &version_spec, args, working_path, &env_map)
+    execute_with_pkgx_library(
+        &tool_name,
+        &version_spec,
+        args,
+        working_path,
+        &env_map,
+        keep_package,
+    )
 }
 
 fn parse_tool_spec(tool: &str) -> (String, String) {
@@ -202,7 +199,7 @@ fn execute_with_pkgx_library(
     args: &[String],
     working_path: &Path,
     env_map: &[(String, String)],
-    ephemeral: bool,
+    keep_package: bool,
 ) -> Result<()> {
     info!("Using pkgx library integration...");
 
@@ -212,7 +209,7 @@ fn execute_with_pkgx_library(
         args,
         working_path,
         env_map,
-        ephemeral,
+        keep_package,
     ) {
         Ok(()) => {
             info!("Command executed successfully with pkgx library!");
@@ -232,7 +229,7 @@ fn try_libpkgx_execution(
     args: &[String],
     working_path: &Path,
     env_map: &[(String, String)],
-    ephemeral: bool,
+    keep_package: bool,
 ) -> Result<()> {
     use std::env;
 
@@ -289,7 +286,7 @@ fn try_libpkgx_execution(
                 if installation.pkg.project == project_name {
                     info!("Package installed at: {}", installation.path.display());
 
-                    if ephemeral {
+                    if !keep_package {
                         paths_to_cleanup.push(installation.path.clone());
                     }
 
@@ -339,7 +336,7 @@ fn try_libpkgx_execution(
         }
     };
 
-    if ephemeral && !paths_to_cleanup.is_empty() {
+    if !keep_package && !paths_to_cleanup.is_empty() {
         info!("Cleaning up ephemeral installations...");
         for path in paths_to_cleanup {
             if let Err(e) = cleanup_installation(&path) {
@@ -475,6 +472,7 @@ async fn resolve_dependencies_async(
 
     for (key, value) in runtime_env {
         let cleaned_value = clean_shell_expansion(&value, &key.to_string());
+        info!("Environment set {}={}", &key.to_string(), cleaned_value);
         resolved_env.insert(key.to_string(), cleaned_value);
     }
 
@@ -520,7 +518,7 @@ fn execute_with_pkgx_binary(
 
     if !pkgx_available {
         anyhow::bail!(
-            "pkgx is not available. Please install pkgx from https://pkgx.sh\n\
+            "pkgx is not available. Install pkgx from https://pkgx.sh\n\
              Installation: curl -fsS https://pkgx.sh | sh"
         );
     }

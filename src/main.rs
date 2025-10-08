@@ -98,10 +98,6 @@ enum Commands {
         #[arg(long)]
         env: Vec<String>,
 
-        /// Ignore local dependencies and force use of pkgx
-        #[arg(long, default_value = "false")]
-        ignore_local_dependencies: bool,
-
         /// Keep packages after command execution (default: delete after execution)
         #[arg(long, default_value = "false", conflicts_with = "keep_pkgx")]
         keep_package: bool,
@@ -160,17 +156,17 @@ fn main() -> Result<()> {
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .collect();
-
-            gh_release::install(
-                &repo,
-                &binary_list,
-                &version,
-                &install_dir,
-                filter.as_deref(),
+            let input = gh_release::GhReleaseInput {
+                repo: &repo,
+                binary_names: &binary_list,
+                version: &version,
+                install_dir: &install_dir,
+                filter: filter.as_deref(),
                 verify_checksum,
-                checksum_text.as_deref(),
-                gpg_key.as_deref(),
-            )?;
+                checksum_text: checksum_text.as_deref(),
+                gpg_key: gpg_key.as_deref(),
+            };
+            gh_release::install(input)?;
         }
 
         Commands::Run {
@@ -178,7 +174,6 @@ fn main() -> Result<()> {
             args,
             working_dir,
             env,
-            ignore_local_dependencies,
             keep_package,
             keep_pkgx,
         } => {
@@ -187,9 +182,7 @@ fn main() -> Result<()> {
                 return Ok(());
             }
 
-            // Invert keep_package since the default is now to delete packages
-            let delete_after_execution = !keep_package;
-            run::execute(&tool, &args, &working_dir, &env, ignore_local_dependencies, delete_after_execution)?;
+            run::execute(&tool, &args, &working_dir, &env, keep_package)?;
         }
     }
 
@@ -240,18 +233,16 @@ mod tests {
 
     #[test]
     fn test_cli_parser_exists() {
-        // Test that Cli struct can be instantiated
         use clap::CommandFactory;
         let _ = Cli::command();
     }
 
     #[test]
     fn test_commands_enum_variants() {
-        // Test that all command variants exist
         use clap::CommandFactory;
         let cmd = Cli::command();
         let subcommands: Vec<_> = cmd.get_subcommands().map(|s| s.get_name()).collect();
-        
+
         assert!(subcommands.contains(&"apt-get"));
         assert!(subcommands.contains(&"apk"));
         assert!(subcommands.contains(&"brew"));
