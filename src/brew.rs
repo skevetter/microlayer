@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use log::info;
 use std::process::{Command, Stdio};
 
 /// Install packages using Homebrew
@@ -18,9 +19,9 @@ pub fn install(packages: &[String]) -> Result<()> {
         );
     }
 
-    println!("Installing packages with brew: {}", packages.join(", "));
+    info!("Installing packages with brew: {}", packages.join(", "));
 
-    println!("Updating Homebrew...");
+    info!("Updating Homebrew...");
     let status = Command::new("brew")
         .arg("update")
         .stdout(Stdio::inherit())
@@ -35,7 +36,7 @@ pub fn install(packages: &[String]) -> Result<()> {
         );
     }
 
-    println!("Installing packages...");
+    info!("Installing packages...");
     let status = Command::new("brew")
         .arg("install")
         .args(packages)
@@ -51,13 +52,28 @@ pub fn install(packages: &[String]) -> Result<()> {
         );
     }
 
-    println!("Cleaning up Homebrew cache...");
+    info!("Cleaning up Homebrew cache...");
     let _ = Command::new("brew")
         .arg("cleanup")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status();
 
-    println!("Installation complete!");
+    info!("Installation complete!");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_install_function_exists() {
+        // Test that the install function can be called (will fail if brew not available)
+        let packages = vec!["nonexistent-package-12345".to_string()];
+        let result = install(&packages);
+        // We expect this to fail if brew is not available or package doesn't exist
+        // This test just ensures the function signature is correct
+        let _ = result;
+    }
 }

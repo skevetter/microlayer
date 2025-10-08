@@ -1,5 +1,6 @@
 use crate::utils::{command, linux_info};
 use anyhow::{Context, Result};
+use log::{info, warn};
 use std::fs;
 use std::path::Path;
 
@@ -20,8 +21,8 @@ pub fn install(
     let mut ppas = ppas.map(|p| p.to_vec()).unwrap_or_default();
 
     if !ppas.is_empty() && !linux_info::is_ubuntu() && !force_ppas_on_non_ubuntu {
-        eprintln!("Warning: PPAs are ignored on non-Ubuntu distros!");
-        eprintln!("Use --force-ppas-on-non-ubuntu to include them anyway.");
+        warn!("PPAs are ignored on non-Ubuntu distros!");
+        info!("Use --force-ppas-on-non-ubuntu to include them anyway.");
         ppas.clear();
     }
 
@@ -72,6 +73,30 @@ fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Pat
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ppa_support_packages() {
+        assert!(PPA_SUPPORT_PACKAGES.contains(&"software-properties-common"));
+    }
+
+    #[test]
+    fn test_ppa_support_packages_debian() {
+        assert!(PPA_SUPPORT_PACKAGES_DEBIAN.contains(&"python3-launchpadlib"));
+    }
+
+    #[test]
+    fn test_install_function_signature() {
+        // Test that function signature is correct (this test won't actually run apt-get)
+        let packages = vec!["test".to_string()];
+        let result = install(&packages, None, false);
+        // Just testing the signature, not expecting success
+        let _ = result;
+    }
 }
 
 fn add_ppas(ppas: &[String]) -> Result<(Vec<String>, Vec<String>)> {

@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use flate2::read::GzDecoder;
+use log::{info, warn};
 use regex::Regex;
 use reqwest::blocking::Client;
 use serde::Deserialize;
@@ -31,9 +32,10 @@ struct InstallConfig<'a> {
     repo: &'a str,
     binary_names: &'a [String],
     version: &'a str,
-    bin_location: &'a str,
+    install_dir: &'a str,
     filter: Option<&'a str>,
-    checksum: bool,
+    verify_checksum: bool,
+    checksum_text: Option<&'a str>,
     gpg_key: Option<&'a str>,
 }
 
@@ -42,18 +44,20 @@ pub fn install(
     repo: &str,
     binary_names: &[String],
     version: &str,
-    bin_location: &str,
+    install_dir: &str,
     filter: Option<&str>,
-    checksum: bool,
+    verify_checksum: bool,
+    checksum_text: Option<&str>,
     gpg_key: Option<&str>,
 ) -> Result<()> {
     let config = InstallConfig {
         repo,
         binary_names,
         version,
-        bin_location,
+        install_dir,
         filter,
-        checksum,
+        verify_checksum,
+        checksum_text,
         gpg_key,
     };
 
@@ -72,21 +76,23 @@ impl Installer {
     }
 
     fn install(&self, config: InstallConfig) -> Result<()> {
-        println!("Fetching release information for {}", config.repo);
+        info!("Fetching release information for {}", config.repo);
         let release = self.fetch_release(config.repo, config.version)?;
-        println!("Installing from release: {}", release.tag_name);
+        info!("Installing from release: {}", release.tag_name);
 
-        let gpg_verification = config.checksum && config.gpg_key.is_some();
+        let gpg_verification = config.verify_checksum && config.gpg_key.is_some();
         let asset = self.select_asset(&release.assets, config.filter, gpg_verification)?;
-        println!("Selected asset: {}", asset.name);
+        info!("Selected asset: {}", asset.name);
 
-        if config.checksum {
+        if let Some(checksum_text) = config.checksum_text {
+            self.verify_asset_with_checksum_text(asset, checksum_text)?;
+        } else if config.verify_checksum {
             self.verify_asset(&release.assets, asset, config.gpg_key)?;
         }
 
-        self.download_and_install_asset(asset, config.binary_names, config.bin_location)?;
+        self.download_and_install_asset(asset, config.binary_names, config.install_dir)?;
 
-        println!("Installation complete!");
+        info!("Installation complete!");
         Ok(())
     }
 
@@ -110,6 +116,10 @@ impl Installer {
 
     fn verify_asset(&self, assets: &[Asset], asset: &Asset, gpg_key: Option<&str>) -> Result<()> {
         AssetVerifier::new(&self.client).verify(assets, asset, gpg_key)
+    }
+
+    fn verify_asset_with_checksum_text(&self, asset: &Asset, checksum_text: &str) -> Result<()> {
+        AssetVerifier::new(&self.client).verify_with_checksum_text(asset, checksum_text)
     }
 
     fn download_and_install_asset(
@@ -293,10 +303,10 @@ impl<'a> AssetInstaller<'a> {
     }
 
     fn install(&self, asset: &Asset, binary_names: &[String], bin_location: &str) -> Result<()> {
-        println!("Downloading asset...");
+        info!("Downloading asset...");
         let archive_data = self.download_asset(asset)?;
 
-        println!("Extracting binaries: {}", binary_names.join(", "));
+        info!("Extracting binaries: {}", binary_names.join(", "));
         self.extract_binaries(&archive_data, binary_names, bin_location)?;
 
         Ok(())
@@ -425,7 +435,7 @@ impl<'a> AssetInstaller<'a> {
                         fs::set_permissions(&dest_path, perms)?;
                     }
 
-                    println!("Installed: {} -> {}", file_name, dest_path.display());
+                    info!("Installed: {} -> {}", file_name, dest_path.display());
                 }
             }
         }
@@ -450,7 +460,7 @@ impl<'a> AssetInstaller<'a> {
             fs::set_permissions(&dest_path, perms)?;
         }
 
-        println!("Installed: {} -> {}", file_name, dest_path.display());
+        info!("Installed: {} -> {}", file_name, dest_path.display());
         Ok(())
     }
 }
@@ -465,7 +475,7 @@ impl<'a> AssetVerifier<'a> {
     }
 
     fn verify(&self, assets: &[Asset], asset: &Asset, gpg_key: Option<&str>) -> Result<()> {
-        println!("Verifying asset...");
+        info!("Verifying asset...");
 
         let checksum_asset = self.find_checksum_asset(assets, asset)?;
 
@@ -474,6 +484,38 @@ impl<'a> AssetVerifier<'a> {
         }
 
         self.verify_sha256_checksum(asset, checksum_asset, assets)
+    }
+
+    fn verify_with_checksum_text(&self, asset: &Asset, checksum_text: &str) -> Result<()> {
+        info!("Verifying asset with provided checksum text...");
+
+        // Parse checksum text format: "algorithm:hash"
+        let parts: Vec<&str> = checksum_text.splitn(2, ':').collect();
+        if parts.len() != 2 {
+            anyhow::bail!("Invalid checksum text format. Expected 'algorithm:hash' (e.g., 'sha256:abc123...')");
+        }
+
+        let algorithm = parts[0].to_lowercase();
+        let expected_hash = parts[1];
+
+        if algorithm != "sha256" {
+            anyhow::bail!("Only sha256 algorithm is currently supported");
+        }
+
+        info!("Downloading asset for verification...");
+        let asset_data = self.download_asset(asset)?;
+        let computed_hash = compute_sha256(&asset_data);
+
+        if computed_hash.to_lowercase() == expected_hash.to_lowercase() {
+            info!("Checksum verification passed");
+            Ok(())
+        } else {
+            anyhow::bail!(
+                "Checksum verification failed!\nExpected: {}\nComputed: {}",
+                expected_hash,
+                computed_hash
+            );
+        }
     }
 
     fn find_checksum_asset<'b>(&self, assets: &'b [Asset], asset: &Asset) -> Result<&'b Asset> {
@@ -529,11 +571,11 @@ impl<'a> AssetVerifier<'a> {
         gpg_key: Option<&str>,
     ) -> Result<()> {
         if let Some(key_content) = gpg_key {
-            println!("Verifying GPG signature...");
+            info!("Verifying GPG signature...");
             GpgVerifier::new(self.client).verify(asset, signature_asset, key_content)
         } else {
-            println!("Warning: Found signature file but no GPG key provided");
-            println!("Use --gpg-key option to enable GPG verification");
+            warn!("Found signature file but no GPG key provided");
+            info!("Use --gpg-key option to enable GPG verification");
             Ok(())
         }
     }
@@ -544,8 +586,8 @@ impl<'a> AssetVerifier<'a> {
         checksum_asset: &Asset,
         _assets: &[Asset],
     ) -> Result<()> {
-        println!("Verifying SHA256 checksum...");
-        println!("Checksum file: {}", checksum_asset.name);
+        info!("Verifying SHA256 checksum...");
+        info!("Checksum file: {}", checksum_asset.name);
 
         let asset_data = self.download_asset(asset)?;
         let computed_hash = compute_sha256(&asset_data);
@@ -554,7 +596,7 @@ impl<'a> AssetVerifier<'a> {
         let expected_hash = self.parse_checksum(&checksum_content, &asset.name)?;
 
         if computed_hash.to_lowercase() == expected_hash.to_lowercase() {
-            println!("Checksum verification passed");
+            info!("Checksum verification passed");
             Ok(())
         } else {
             anyhow::bail!(
@@ -627,16 +669,16 @@ impl<'a> GpgVerifier<'a> {
         use pgp::composed::{Deserializable, DetachedSignature};
         use std::io::Cursor;
 
-        println!("Downloading asset for verification...");
+        info!("Downloading asset for verification...");
         let asset_data = self.download_data(&asset.browser_download_url)?;
 
-        println!("Downloading signature file...");
+        info!("Downloading signature file...");
         let sig_data = self.download_data(&signature_asset.browser_download_url)?;
 
-        println!("Loading GPG public key...");
+        info!("Loading GPG public key...");
         let public_key = self.load_public_key(gpg_key_content)?;
 
-        println!("Parsing signature...");
+        info!("Parsing signature...");
         let signature = if sig_data.starts_with(b"-----BEGIN PGP SIGNATURE-----") {
             // ASCII-armored signature
             let sig_str =
@@ -650,12 +692,12 @@ impl<'a> GpgVerifier<'a> {
                 .context("Failed to parse binary signature")?
         };
 
-        println!("Verifying signature...");
+        info!("Verifying signature...");
         signature
             .verify(&public_key, &asset_data[..])
             .context("GPG signature verification failed")?;
 
-        println!("GPG signature verification passed!");
+        info!("GPG signature verification passed!");
         Ok(())
     }
 
@@ -679,7 +721,7 @@ impl<'a> GpgVerifier<'a> {
 
         let key_data = if key_content.starts_with("http://") || key_content.starts_with("https://")
         {
-            println!("Downloading GPG public key from URL...");
+            info!("Downloading GPG public key from URL...");
             let response = self
                 .client
                 .get(key_content)
@@ -773,4 +815,80 @@ fn compute_sha256(data: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(data);
     hex::encode(hasher.finalize())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_compute_sha256() {
+        let data = b"hello world";
+        let hash = compute_sha256(data);
+        assert_eq!(
+            hash,
+            "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+        );
+    }
+
+    #[test]
+    fn test_get_filename_variants() {
+        let variants = get_filename_variants("file.tar.gz");
+        assert!(variants.contains(&"file.tar.gz".to_string()));
+        assert!(variants.contains(&"file".to_string()));
+    }
+
+    #[test]
+    fn test_parse_checksum_line_success() {
+        let content = "abc123def456  file.tar.gz\n";
+        let result = parse_checksum_line(content, "file.tar.gz");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "abc123def456");
+    }
+
+    #[test]
+    fn test_parse_checksum_line_not_found() {
+        let content = "abc123def456  other-file.tar.gz\n";
+        let result = parse_checksum_line(content, "nonexistent-file.tar.gz");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_asset_selector_arch_patterns() {
+        let selector = AssetSelector::new();
+        let patterns = selector.get_arch_patterns("x86_64");
+        assert!(patterns.contains(&"x86_64"));
+        assert!(patterns.contains(&"amd64"));
+    }
+
+    #[test]
+    fn test_asset_selector_os_patterns() {
+        let selector = AssetSelector::new();
+        let patterns = selector.get_os_patterns("linux");
+        assert!(patterns.contains(&"linux"));
+        assert!(patterns.contains(&"Linux"));
+    }
+
+    #[test]
+    fn test_asset_selector_is_archive() {
+        let selector = AssetSelector::new();
+        assert!(selector.is_archive("file.tar.gz"));
+        assert!(selector.is_archive("file.tgz"));
+        assert!(selector.is_archive("file.tar.xz"));
+        assert!(selector.is_archive("file.zip"));
+        assert!(!selector.is_archive("file.txt"));
+    }
+
+    #[test]
+    fn test_asset_installer_is_tar_xz_archive() {
+        let client = Client::new();
+        let installer = AssetInstaller::new(&client);
+        
+        // XZ magic bytes: 0xFD, '7', 'z', 'X', 'Z', 0x00
+        let xz_data = vec![0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00];
+        assert!(installer.is_tar_xz_archive(&xz_data));
+        
+        let not_xz_data = vec![0x00, 0x01, 0x02, 0x03, 0x04, 0x05];
+        assert!(!installer.is_tar_xz_archive(&not_xz_data));
+    }
 }

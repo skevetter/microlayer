@@ -35,3 +35,17 @@ fn install_with_cleanup(packages: &[String], cache_backup: &Path) -> Result<()> 
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_install_function_signature() {
+        // Test that function signature is correct
+        let packages = vec!["test".to_string()];
+        let result = install(&packages);
+        // Just testing the signature, not expecting success
+        let _ = result;
+    }
+}

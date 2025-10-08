@@ -7,6 +7,7 @@ mod utils;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use log::info;
 
 #[derive(Parser)]
 #[command(name = "picolayer")]
@@ -59,17 +60,21 @@ enum Commands {
         #[arg(long, default_value = "latest")]
         version: String,
 
-        /// Location to install binaries
+        /// Directory to install binaries
         #[arg(long, default_value = "/usr/local/bin")]
-        bin_location: String,
+        install_dir: String,
 
         /// Regex pattern for asset filtering
         #[arg(long)]
         filter: Option<String>,
 
         /// Verify checksums using checksum files
-        #[arg(long, default_value = "false")]
-        checksum: bool,
+        #[arg(long, default_value = "false", conflicts_with = "checksum_text")]
+        verify_checksum: bool,
+
+        /// Checksum text for verification (e.g., "sha256:5d3d3c60ffcf601f964bb4060a4234f9a96a3b09a7cdf67d1e61ae88efcd48f4")
+        #[arg(long, conflicts_with = "verify_checksum")]
+        checksum_text: Option<String>,
 
         /// GPG public key for signature verification (can be a URL, file path, or key content)
         #[arg(long)]
@@ -93,17 +98,17 @@ enum Commands {
         #[arg(long)]
         env: Vec<String>,
 
-        /// Force pkgx even if dependencies exist locally
+        /// Ignore local dependencies and force use of pkgx
         #[arg(long, default_value = "false")]
-        force_pkgx: bool,
+        ignore_local_dependencies: bool,
 
-        /// Delete installed packages after command execution
-        #[arg(long, default_value = "false", conflicts_with = "delete")]
-        ephemeral: bool,
+        /// Keep packages after command execution (default: delete after execution)
+        #[arg(long, default_value = "false", conflicts_with = "keep_pkgx")]
+        keep_package: bool,
 
         /// Completely uninstall pkgx and remove all cache/data files
-        #[arg(long, default_value = "false", conflicts_with = "ephemeral")]
-        delete: bool,
+        #[arg(long, default_value = "false", conflicts_with = "keep_package")]
+        keep_pkgx: bool,
     },
 }
 
@@ -112,6 +117,9 @@ fn normalize_pkg_input(packages: String) -> Vec<String> {
 }
 
 fn main() -> Result<()> {
+    env_logger::init();
+    info!("Starting picolayer");
+
     let cli = Cli::parse();
 
     match cli.command {
@@ -142,9 +150,10 @@ fn main() -> Result<()> {
             repo,
             binary_names,
             version,
-            bin_location,
+            install_dir,
             filter,
-            checksum,
+            verify_checksum,
+            checksum_text,
             gpg_key,
         } => {
             let binary_list: Vec<String> = binary_names
@@ -156,9 +165,10 @@ fn main() -> Result<()> {
                 &repo,
                 &binary_list,
                 &version,
-                &bin_location,
+                &install_dir,
                 filter.as_deref(),
-                checksum,
+                verify_checksum,
+                checksum_text.as_deref(),
                 gpg_key.as_deref(),
             )?;
         }
@@ -168,18 +178,84 @@ fn main() -> Result<()> {
             args,
             working_dir,
             env,
-            force_pkgx,
-            ephemeral,
-            delete,
+            ignore_local_dependencies,
+            keep_package,
+            keep_pkgx,
         } => {
-            if delete {
+            if keep_pkgx {
                 run::uninstall_pkgx()?;
                 return Ok(());
             }
 
-            run::execute(&tool, &args, &working_dir, &env, force_pkgx, ephemeral)?;
+            // Invert keep_package since the default is now to delete packages
+            let delete_after_execution = !keep_package;
+            run::execute(&tool, &args, &working_dir, &env, ignore_local_dependencies, delete_after_execution)?;
         }
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_pkg_input_single() {
+        let result = normalize_pkg_input("package1".to_string());
+        assert_eq!(result, vec!["package1".to_string()]);
+    }
+
+    #[test]
+    fn test_normalize_pkg_input_multiple() {
+        let result = normalize_pkg_input("package1,package2,package3".to_string());
+        assert_eq!(
+            result,
+            vec![
+                "package1".to_string(),
+                "package2".to_string(),
+                "package3".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn test_normalize_pkg_input_with_spaces() {
+        let result = normalize_pkg_input("package1 , package2 , package3".to_string());
+        assert_eq!(
+            result,
+            vec![
+                "package1".to_string(),
+                "package2".to_string(),
+                "package3".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn test_normalize_pkg_input_empty() {
+        let result = normalize_pkg_input("".to_string());
+        assert_eq!(result, vec!["".to_string()]);
+    }
+
+    #[test]
+    fn test_cli_parser_exists() {
+        // Test that Cli struct can be instantiated
+        use clap::CommandFactory;
+        let _ = Cli::command();
+    }
+
+    #[test]
+    fn test_commands_enum_variants() {
+        // Test that all command variants exist
+        use clap::CommandFactory;
+        let cmd = Cli::command();
+        let subcommands: Vec<_> = cmd.get_subcommands().map(|s| s.get_name()).collect();
+        
+        assert!(subcommands.contains(&"apt-get"));
+        assert!(subcommands.contains(&"apk"));
+        assert!(subcommands.contains(&"brew"));
+        assert!(subcommands.contains(&"gh-release"));
+        assert!(subcommands.contains(&"run"));
+    }
 }

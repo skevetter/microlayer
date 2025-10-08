@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use log::{info, warn};
 use std::collections::HashMap;
 #[cfg(not(target_os = "macos"))]
 use std::env;
@@ -6,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 pub fn uninstall_pkgx() -> Result<()> {
-    println!("Uninstalling pkgx and removing all associated files...");
+    info!("Uninstalling pkgx and removing all associated files...");
 
     let mut removed_count = 0;
     let mut error_count = 0;
@@ -18,11 +19,11 @@ pub fn uninstall_pkgx() -> Result<()> {
         if path.exists() {
             match std::fs::remove_file(&path) {
                 Ok(()) => {
-                    println!("Removed binary: {}", path.display());
+                    info!("Removed binary: {}", path.display());
                     removed_count += 1;
                 }
                 Err(e) => {
-                    eprintln!("Failed to remove {}: {} (try with sudo)", path.display(), e);
+                    warn!("Failed to remove {}: {} (try with sudo)", path.display(), e);
                     error_count += 1;
                 }
             }
@@ -34,11 +35,11 @@ pub fn uninstall_pkgx() -> Result<()> {
         if pkgx_dir.exists() {
             match std::fs::remove_dir_all(&pkgx_dir) {
                 Ok(()) => {
-                    println!("Removed main directory: {}", pkgx_dir.display());
+                    info!("Removed main directory: {}", pkgx_dir.display());
                     removed_count += 1;
                 }
                 Err(e) => {
-                    eprintln!("Failed to remove {}: {}", pkgx_dir.display(), e);
+                    warn!("Failed to remove {}: {}", pkgx_dir.display(), e);
                     error_count += 1;
                 }
             }
@@ -57,28 +58,28 @@ pub fn uninstall_pkgx() -> Result<()> {
 
             match result {
                 Ok(()) => {
-                    println!("Removed cache/data: {}", path.display());
+                    info!("Removed cache/data: {}", path.display());
                     removed_count += 1;
                 }
                 Err(e) => {
-                    eprintln!("Failed to remove {}: {}", path.display(), e);
+                    warn!("Failed to remove {}: {}", path.display(), e);
                     error_count += 1;
                 }
             }
         }
     }
 
-    println!("Uninstall Summary:");
-    println!("Successfully removed: {} items", removed_count);
+    info!("Uninstall Summary:");
+    info!("Successfully removed: {} items", removed_count);
     if error_count > 0 {
-        println!("Failed to remove: {} items", error_count);
-        println!("Some files may require sudo privileges to remove");
+        warn!("Failed to remove: {} items", error_count);
+        info!("Some files may require sudo privileges to remove");
     }
 
     if removed_count > 0 {
-        println!("pkgx uninstallation completed!");
+        info!("pkgx uninstallation completed!");
     } else {
-        println!("No pkgx installation found to remove");
+        info!("No pkgx installation found to remove");
     }
 
     Ok(())
@@ -130,16 +131,16 @@ pub fn execute(
 
     let (tool_name, version_spec) = parse_tool_spec(tool);
 
-    println!(
+    info!(
         "Executing: {} with tool: {} ({})",
         args.join(" "),
         tool_name,
         version_spec
     );
-    println!("Working directory: {}", working_dir);
+    info!("Working directory: {}", working_dir);
 
     if ephemeral {
-        println!("Ephemeral mode: packages will be removed after execution");
+        info!("Ephemeral mode: packages will be removed after execution");
     }
 
     let mut env_map = Vec::new();
@@ -203,7 +204,7 @@ fn execute_with_pkgx_library(
     env_map: &[(String, String)],
     ephemeral: bool,
 ) -> Result<()> {
-    println!("Using pkgx library integration...");
+    info!("Using pkgx library integration...");
 
     match try_libpkgx_execution(
         tool_name,
@@ -214,12 +215,12 @@ fn execute_with_pkgx_library(
         ephemeral,
     ) {
         Ok(()) => {
-            println!("Command executed successfully with pkgx library!");
+            info!("Command executed successfully with pkgx library!");
             Ok(())
         }
         Err(e) => {
-            eprintln!("pkgx library execution failed: {}", e);
-            eprintln!("Falling back to pkgx binary execution...");
+            warn!("pkgx library execution failed: {}", e);
+            info!("Falling back to pkgx binary execution...");
             execute_with_pkgx_binary(tool_name, version_spec, args, working_path, env_map)
         }
     }
@@ -247,7 +248,7 @@ fn try_libpkgx_execution(
         format!("{}@{}", project_name, version_spec)
     };
 
-    println!("Resolving package: {}", tool_spec);
+    info!("Resolving package: {}", tool_spec);
 
     let mut cmd_env = HashMap::new();
 
@@ -286,7 +287,7 @@ fn try_libpkgx_execution(
 
             for installation in &installations {
                 if installation.pkg.project == project_name {
-                    println!("Package installed at: {}", installation.path.display());
+                    info!("Package installed at: {}", installation.path.display());
 
                     if ephemeral {
                         paths_to_cleanup.push(installation.path.clone());
@@ -296,14 +297,14 @@ fn try_libpkgx_execution(
                     for bin_dir in bin_paths {
                         let executable_path = installation.path.join(bin_dir).join(tool_name);
                         if executable_path.exists() {
-                            println!("Executable found at: {}", executable_path.display());
+                            info!("Executable found at: {}", executable_path.display());
                             break;
                         }
                     }
                 }
             }
 
-            println!("Successfully resolved package with libpkgx");
+            info!("Successfully resolved package with libpkgx");
 
             let mut cmd = Command::new(tool_name);
             cmd.args(args);
@@ -333,21 +334,21 @@ fn try_libpkgx_execution(
             Ok(())
         }
         Err(e) => {
-            eprintln!("Warning: Failed to resolve package with libpkgx: {}", e);
+            warn!("Failed to resolve package with libpkgx: {}", e);
             Err(e)
         }
     };
 
     if ephemeral && !paths_to_cleanup.is_empty() {
-        println!("Cleaning up ephemeral installations...");
+        info!("Cleaning up ephemeral installations...");
         for path in paths_to_cleanup {
             if let Err(e) = cleanup_installation(&path) {
-                eprintln!("Warning: Failed to cleanup {}: {}", path.display(), e);
+                warn!("Failed to cleanup {}: {}", path.display(), e);
             } else {
-                println!("Removed: {}", path.display());
+                info!("Removed: {}", path.display());
             }
         }
-        println!("Cleanup completed");
+        info!("Cleanup completed");
     }
 
     execution_result
@@ -418,7 +419,7 @@ async fn resolve_dependencies_async(
     let mut conn = rusqlite::Connection::open(&config.pantry_db_file)?;
 
     if sync::should(&config).map_err(|e| anyhow::anyhow!("{}", e))? {
-        println!("Syncing pkgx pantry database...");
+        info!("Syncing pkgx pantry database...");
         sync::ensure(&config, &mut conn)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -452,7 +453,7 @@ async fn resolve_dependencies_async(
 
     let mut installations = resolution.installed;
     if !resolution.pending.is_empty() {
-        println!(
+        info!(
             "Installing {} packages with libpkgx...",
             resolution.pending.len()
         );
@@ -477,7 +478,7 @@ async fn resolve_dependencies_async(
         resolved_env.insert(key.to_string(), cleaned_value);
     }
 
-    println!(
+    info!(
         "Successfully resolved {} packages with libpkgx",
         dependencies.len()
     );
@@ -558,7 +559,7 @@ fn execute_with_pkgx_binary(
         );
     }
 
-    println!("Command executed successfully!");
+    info!("Command executed successfully!");
     Ok(())
 }
 
