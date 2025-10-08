@@ -1,11 +1,12 @@
 name: Build and Push Docker Image
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - "v*"
+  # Disabled due to permission issues pushing image to the GitHub Container Registry
+  # push:
+  #   branches:
+  #     - main
+  #   tags:
+  #     - "v*"
   workflow_dispatch:
 
 env:
