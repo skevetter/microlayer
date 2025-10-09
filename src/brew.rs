@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use log::info;
 use std::process::{Command, Stdio};
 
 /// Install packages using Homebrew
@@ -13,14 +14,14 @@ pub fn install(packages: &[String]) -> Result<()> {
 
     if !brew_available {
         anyhow::bail!(
-            "Homebrew is not available. Please install Homebrew from https://brew.sh\n\
+            "Homebrew is not available. Install Homebrew from https://brew.sh\n\
              Installation: /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
         );
     }
 
-    println!("Installing packages with brew: {}", packages.join(", "));
+    info!("Installing packages with brew: {}", packages.join(", "));
 
-    println!("Updating Homebrew...");
+    info!("Updating Homebrew...");
     let status = Command::new("brew")
         .arg("update")
         .stdout(Stdio::inherit())
@@ -35,7 +36,7 @@ pub fn install(packages: &[String]) -> Result<()> {
         );
     }
 
-    println!("Installing packages...");
+    info!("Installing packages...");
     let status = Command::new("brew")
         .arg("install")
         .args(packages)
@@ -51,13 +52,25 @@ pub fn install(packages: &[String]) -> Result<()> {
         );
     }
 
-    println!("Cleaning up Homebrew cache...");
+    info!("Cleaning up Homebrew cache...");
     let _ = Command::new("brew")
         .arg("cleanup")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status();
 
-    println!("Installation complete!");
+    info!("Installation complete!");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_install_function_exists() {
+        let packages = vec!["nonexistent-package-12345".to_string()];
+        let result = install(&packages);
+        let _ = result;
+    }
 }

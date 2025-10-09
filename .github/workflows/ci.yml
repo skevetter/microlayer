@@ -2,19 +2,24 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+        os:
+          - ubuntu-latest
+          - macos-latest
 
     steps:
       - uses: actions/checkout@v5
@@ -44,7 +49,8 @@ jobs:
             SIZE=$(stat -c%s "target/release/picolayer")
           fi
 
-          echo "Binary size: $SIZE bytes"
+          MB_SIZE=$((SIZE / 1024 / 1024))
+          echo "Binary size: $MB_SIZE MB"
           if [ "$SIZE" -gt 20000000 ]; then
             echo "Warning: Binary size exceeds 20MB"
             exit 1

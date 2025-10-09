@@ -1,10 +1,12 @@
 use crate::utils::{command, linux_info};
 use anyhow::{Context, Result};
+use log::{info, warn};
 use std::fs;
 use std::path::Path;
 
 const PPA_SUPPORT_PACKAGES: &[&str] = &["software-properties-common"];
 const PPA_SUPPORT_PACKAGES_DEBIAN: &[&str] = &["python3-launchpadlib"];
+const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
 
 /// Install packages using apt-get with optional PPAs
 pub fn install(
@@ -20,17 +22,18 @@ pub fn install(
     let mut ppas = ppas.map(|p| p.to_vec()).unwrap_or_default();
 
     if !ppas.is_empty() && !linux_info::is_ubuntu() && !force_ppas_on_non_ubuntu {
-        eprintln!("Warning: PPAs are ignored on non-Ubuntu distros!");
-        eprintln!("Use --force-ppas-on-non-ubuntu to include them anyway.");
+        warn!("PPAs are ignored on non-Ubuntu distros!");
+        info!("Use --force-ppas-on-non-ubuntu to include them anyway.");
         ppas.clear();
     }
 
     let temp_dir = tempfile::tempdir().context("Failed to create temp directory")?;
     let cache_backup = temp_dir.path().join("lists");
 
-    if Path::new("/var/lib/apt/lists").exists() {
+    if Path::new(APT_LISTS_DIR).exists() {
         command::execute(&format!(
-            "cp -p -R /var/lib/apt/lists {}",
+            "cp -p -R {} {}",
+            APT_LISTS_DIR,
             cache_backup.display()
         ))?;
     }
@@ -65,13 +68,34 @@ fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Pat
     }
 
     command::execute("apt-get clean")?;
-    command::execute("rm -rf /var/lib/apt/lists")?;
+    command::execute(&format!("rm -rf {}", APT_LISTS_DIR))?;
     if cache_backup.exists() {
-        fs::rename(cache_backup, "/var/lib/apt/lists")
-            .context("Failed to restore apt lists cache")?;
+        fs::rename(cache_backup, APT_LISTS_DIR).context("Failed to restore apt lists cache")?;
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ppa_support_packages() {
+        assert!(PPA_SUPPORT_PACKAGES.contains(&"software-properties-common"));
+    }
+
+    #[test]
+    fn test_ppa_support_packages_debian() {
+        assert!(PPA_SUPPORT_PACKAGES_DEBIAN.contains(&"python3-launchpadlib"));
+    }
+
+    #[test]
+    fn test_install_function_signature() {
+        let packages = vec!["test".to_string()];
+        let result = install(&packages, None, false);
+        let _ = result;
+    }
 }
 
 fn add_ppas(ppas: &[String]) -> Result<(Vec<String>, Vec<String>)> {

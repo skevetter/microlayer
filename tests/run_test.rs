@@ -1,30 +1,43 @@
 mod common;
 
 use common::{binary_exists, run_picolayer};
+use serial_test::serial;
 
 use crate::common::is_transient_error;
 
 #[test]
+#[serial]
 fn test_picolayer_run_python_version() {
     let output = run_picolayer(&["run", "python@3.11", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Python 3.11"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_node_version() {
     let output = run_picolayer(&["run", "node@18", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("v18"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_with_working_directory() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let working_dir = temp_dir.path().to_str().unwrap();
-
     let script_path = temp_dir.path().join("test_script.py");
     std::fs::write(&script_path, "print('Hello from script')").expect("Failed to write script");
 
@@ -36,11 +49,17 @@ fn test_picolayer_run_with_working_directory() {
         "test_script.py",
     ]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Hello from script"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_dependency_detection() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let package_json = temp_dir.path().join("package.json");
@@ -54,14 +73,19 @@ fn test_picolayer_run_dependency_detection() {
         "--version",
     ]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("v"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_python_with_requirements() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
-
     let requirements_txt = temp_dir.path().join("requirements.txt");
     std::fs::write(&requirements_txt, "requests==2.28.0")
         .expect("Failed to write requirements.txt");
@@ -74,11 +98,17 @@ fn test_picolayer_run_python_with_requirements() {
         "--version",
     ]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Python"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_go_with_mod() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let go_mod = temp_dir.path().join("go.mod");
@@ -92,27 +122,45 @@ fn test_picolayer_run_go_with_mod() {
         "version",
     ]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("go version"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_python_with_version_simple() {
     let output = run_picolayer(&["run", "python@3.10", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Python 3.10"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_python_latest() {
     let output = run_picolayer(&["run", "python", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Python"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_python_script() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let script_path = temp_dir.path().join("test.py");
@@ -126,74 +174,122 @@ fn test_picolayer_run_python_script() {
         script_path.to_str().unwrap(),
     ]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Hello from Python!"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_node_with_version_simple() {
     let output = run_picolayer(&["run", "node@18", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("v18."));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_node_inline_code() {
     let output = run_picolayer(&["run", "node", "-e", "console.log('Hello from Node.js!')"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Hello from Node.js!"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_go_with_version() {
     let output = run_picolayer(&["run", "go@1.21", "version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("go1.21"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_ruby_inline() {
     let output = run_picolayer(&["run", "ruby", "-e", "puts 'Hello from Ruby!'"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Hello from Ruby!"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_with_env_vars() {
     let output = run_picolayer(&[
         "run",
+        "--env",
+        "TEST_VAR=hello_world",
         "python",
         "-c",
         "import os; print(f'TEST_VAR={os.environ.get(\"TEST_VAR\", \"not found\")}')",
-        "--env",
-        "TEST_VAR=hello_world",
     ]);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
     let stdout = String::from_utf8_lossy(&output.stdout);
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("TEST_VAR=hello_world"));
 }
 
 #[test]
-fn test_picolayer_run_with_force_pkgx() {
-    let output = run_picolayer(&["run", "echo", "hello", "world", "--force-pkgx"]);
+#[serial]
+fn test_picolayer_run_with_keep_pkgx() {
+    let output = run_picolayer(&["run", "--keep-pkgx", "bash@5.1", "-c", "echo 'hello world'"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("hello world"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_rust_with_version() {
     let output = run_picolayer(&["run", "rustc@1.70", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
 
     assert!(stdout.contains("rustc 1.70"));
 }
 
 #[test]
+#[serial]
 fn test_picolayer_run_multiple_args() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let file1 = temp_dir.path().join("file1.txt");
@@ -221,11 +317,18 @@ with open('{}', 'r') as f1, open('{}', 'r') as f2:
     ]);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
+
     assert!(stdout.contains("content1"));
     assert!(stdout.contains("content2"));
 }
 
 #[test]
+#[serial]
 fn test_pkgx_xz_installation_end_to_end() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -242,7 +345,7 @@ fn test_pkgx_xz_installation_end_to_end() {
             "pkgx",
             "--version",
             "v2.7.0",
-            "--bin-location",
+            "--install-dir",
             bin_location,
             "--filter",
             &format!("{}.*x86-64\\.tar\\.xz", os),

@@ -77,13 +77,19 @@ picolayer gh-release cli/cli gh --version v2.40.0
 With checksum verification:
 
 ```bash
-picolayer gh-release jesseduffield/lazygit lazygit --version latest --checksum
+picolayer gh-release jesseduffield/lazygit lazygit --version latest --verify-checksum
 ```
 
-With custom binary location:
+With checksum text verification:
 
 ```bash
-picolayer gh-release cli/cli gh --version latest --bin-location /usr/local/bin
+picolayer gh-release cli/cli gh --version latest --checksum-text "sha256:5d3d3c60ffcf601f964bb4060a4234f9a96a3b09a7cdf67d1e61ae88efcd48f4"
+```
+
+With custom install directory:
+
+```bash
+picolayer gh-release cli/cli gh --version latest --install-dir /usr/local/bin
 ```
 
 With asset filtering:
@@ -95,7 +101,7 @@ picolayer gh-release cli/cli gh --version latest --filter "linux.*amd64"
 With GPG signature verification:
 
 ```bash
-picolayer gh-release pkgxdev/pkgx pkgx --version latest --checksum --gpg-key /path/to/public-key.asc
+picolayer gh-release pkgxdev/pkgx pkgx --version latest --verify-checksum --gpg-key /path/to/public-key.asc
 ```
 
 ### Run commands with pkgx
@@ -121,23 +127,19 @@ Run with environment variables:
 picolayer run python app.py --env "DEBUG=1" --env "PORT=8000"
 ```
 
-Run in ephemeral mode (cleanup packages after execution):
+Keep packages after execution (default is to delete):
 
 ```bash
-picolayer run "python@3.11" script.py --ephemeral
+picolayer run "python@3.11" script.py --keep-package
 ```
 
-Force use of pkgx:
+Ignore local dependencies and force use of pkgx:
 
 ```bash
-picolayer run "python" script.py --force-pkgx
+picolayer run "python" script.py --ignore-local-dependencies
 ```
 
-Delete pkgx installation:
-
-```bash
-picolayer run --delete
-```
+**Note**: By default, picolayer now cleans up packages after execution to minimize disk usage. Use `--keep-package` to preserve them.
 
 ## Docker Example
 
@@ -175,8 +177,22 @@ RUN curl -sfL https://github.com/skevetter/picolayer/releases/latest/download/pi
 
 ## Building
 
+Build from source:
+
 ```bash
 cargo build --release
+```
+
+Build and run tests:
+
+```bash
+cargo test
+```
+
+To enable logging, set the `RUST_LOG` environment variable:
+
+```bash
+RUST_LOG=info picolayer gh-release cli/cli gh
 ```
 
 ## License
