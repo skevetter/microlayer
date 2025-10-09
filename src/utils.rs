@@ -1,6 +1,7 @@
 pub mod analytics;
 pub mod command;
 pub mod linux_info;
+pub mod locking;
 
 #[cfg(test)]
 mod tests {
@@ -21,5 +22,12 @@ mod tests {
         use super::analytics;
         // Just verify the module compiles and has the main functions
         let _ = analytics::track_event("test", None);
+    }
+
+    #[test]
+    fn test_locking_module_exists() {
+        use super::locking;
+        // Just verify the module compiles
+        let _ = locking::acquire_lock();
     }
 }
