@@ -143,7 +143,7 @@ mod tests {
         // This should not panic with empty input
         let result = add_ppas(&[]);
         assert!(result.is_ok());
-        let (ppas, packages) = result.unwrap();
+        let (ppas, _packages) = result.unwrap();
         assert_eq!(ppas.len(), 0);
     }
 }
