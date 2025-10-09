@@ -27,11 +27,6 @@ on:
         description: "How to apply fixes (commit or pull_request)"
         required: false
         type: string
-  workflow_run:
-    workflows:
-      - Pre-commit
-    types:
-      - completed
 
 env:
   APPLY_FIXES: ${{ inputs.apply_fixes || 'all' }} # When active, APPLY_FIXES must also be defined as environment variable (in github/workflows/mega-linter.yml or other CI tool)
@@ -45,7 +40,6 @@ concurrency:
 jobs:
   megalinter:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
       issues: write

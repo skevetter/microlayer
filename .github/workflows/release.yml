@@ -12,7 +12,6 @@ on:
         type: choice
         options:
           - stable
-          - nightly
           - rc
 
 env:
