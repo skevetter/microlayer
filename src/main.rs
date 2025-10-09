@@ -1,6 +1,9 @@
 mod apk;
+mod apt;
 mod apt_get;
+mod aptitude;
 mod brew;
+mod devcontainer_feature;
 mod gh_release;
 mod run;
 mod utils;
@@ -36,6 +39,26 @@ enum Commands {
         force_ppas_on_non_ubuntu: bool,
     },
 
+    /// Install packages using apt
+    Apt {
+        /// Comma-separated list of packages to install
+        packages: String,
+
+        /// Comma-separated list of PPAs to use
+        #[arg(long)]
+        ppas: Option<String>,
+
+        /// Force PPAs on non-Ubuntu systems
+        #[arg(long, default_value = "false")]
+        force_ppas_on_non_ubuntu: bool,
+    },
+
+    /// Install packages using aptitude
+    Aptitude {
+        /// Comma-separated list of packages to install
+        packages: String,
+    },
+
     /// Install packages using apk
     Apk {
         /// Comma-separated list of packages to install
@@ -46,6 +69,25 @@ enum Commands {
     Brew {
         /// Comma-separated list of packages to install
         packages: String,
+    },
+
+    /// Install a devcontainer feature
+    #[command(name = "devcontainer-feature")]
+    DevcontainerFeature {
+        /// OCI feature reference (e.g., ghcr.io/devcontainers/features/node:1)
+        feature: String,
+
+        /// Feature options (key=value pairs)
+        #[arg(long)]
+        option: Vec<String>,
+
+        /// Remote user for feature installation
+        #[arg(long)]
+        remote_user: Option<String>,
+
+        /// Environment variables (key=value pairs)
+        #[arg(long)]
+        env: Vec<String>,
     },
 
     /// Install binary from GitHub release
@@ -138,6 +180,36 @@ fn main() -> Result<()> {
             apt_get::install(&pkg_list, ppa_list.as_deref(), force_ppas_on_non_ubuntu)?;
         }
 
+        Commands::Apt {
+            packages,
+            ppas,
+            force_ppas_on_non_ubuntu,
+        } => {
+            let pkg_list: Vec<String> = normalize_pkg_input(packages);
+            let ppa_list: Option<Vec<String>> = ppas.map(normalize_pkg_input);
+            let _ = utils::analytics::track_command(
+                "apt",
+                Some(serde_json::json!({
+                    "package_count": pkg_list.len(),
+                    "has_ppas": ppa_list.is_some(),
+                })),
+            );
+
+            apt::install(&pkg_list, ppa_list.as_deref(), force_ppas_on_non_ubuntu)?;
+        }
+
+        Commands::Aptitude { packages } => {
+            let pkg_list: Vec<String> = normalize_pkg_input(packages);
+            let _ = utils::analytics::track_command(
+                "aptitude",
+                Some(serde_json::json!({
+                    "package_count": pkg_list.len(),
+                })),
+            );
+
+            aptitude::install(&pkg_list)?;
+        }
+
         Commands::Apk { packages } => {
             let pkg_list: Vec<String> = normalize_pkg_input(packages);
             let _ = utils::analytics::track_command(
@@ -160,6 +232,51 @@ fn main() -> Result<()> {
             );
 
             brew::install(&pkg_list)?;
+        }
+
+        Commands::DevcontainerFeature {
+            feature,
+            option,
+            remote_user,
+            env,
+        } => {
+            let _ = utils::analytics::track_command(
+                "devcontainer-feature",
+                Some(serde_json::json!({
+                    "feature": feature,
+                    "option_count": option.len(),
+                    "has_remote_user": remote_user.is_some(),
+                    "env_count": env.len(),
+                })),
+            );
+
+            // Parse options
+            let options = if !option.is_empty() {
+                let mut opts = std::collections::HashMap::new();
+                for opt in option {
+                    if let Some((key, value)) = opt.split_once('=') {
+                        opts.insert(key.to_string(), value.to_string());
+                    }
+                }
+                Some(opts)
+            } else {
+                None
+            };
+
+            // Parse env vars
+            let envs = if !env.is_empty() {
+                let mut env_map = std::collections::HashMap::new();
+                for e in env {
+                    if let Some((key, value)) = e.split_once('=') {
+                        env_map.insert(key.to_string(), value.to_string());
+                    }
+                }
+                Some(env_map)
+            } else {
+                None
+            };
+
+            devcontainer_feature::install(&feature, options, remote_user.as_deref(), envs)?;
         }
 
         Commands::GhRelease {
