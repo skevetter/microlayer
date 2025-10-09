@@ -36,7 +36,7 @@ jobs:
           fi
 
           # Check if there are new commits since the last release
-          COMMITS_SINCE_RELEASE="$(git rev-list ${LATEST_TAG}..HEAD --count)"
+          COMMITS_SINCE_RELEASE="$(git rev-list "${LATEST_TAG}..HEAD" --count)"
 
           if [ "$COMMITS_SINCE_RELEASE" -gt 0 ]; then
             echo "Found $COMMITS_SINCE_RELEASE new commits since $LATEST_TAG"
