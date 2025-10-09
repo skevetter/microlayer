@@ -5,12 +5,17 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
+#[allow(dead_code)]
 const LOCK_FILE_NAME: &str = ".picolayer.lock";
+#[allow(dead_code)]
 const LOCK_TIMEOUT_SECS: u64 = 300; // 5 minutes
+#[allow(dead_code)]
 const LOCK_RETRY_DELAY_MS: u64 = 100;
+#[allow(dead_code)]
 const LOCK_MAX_RETRIES: u32 = 50;
 
 /// Get the lock file path for pkgx operations
+#[allow(dead_code)]
 fn get_lock_path() -> Result<PathBuf> {
     let lock_dir = if let Some(home_dir) = dirs_next::home_dir() {
         home_dir.join(".pkgx")
@@ -18,38 +23,36 @@ fn get_lock_path() -> Result<PathBuf> {
         PathBuf::from("/tmp")
     };
 
-    // Ensure lock directory exists
     if !lock_dir.exists() {
-        fs::create_dir_all(&lock_dir)
-            .context("Failed to create lock directory")?;
+        fs::create_dir_all(&lock_dir).context("Failed to create lock directory")?;
     }
 
     Ok(lock_dir.join(LOCK_FILE_NAME))
 }
 
 /// Check if a lock file is stale (older than timeout)
+#[allow(dead_code)]
 fn is_lock_stale(lock_path: &PathBuf) -> bool {
-    if let Ok(metadata) = fs::metadata(lock_path) {
-        if let Ok(modified) = metadata.modified() {
-            if let Ok(elapsed) = SystemTime::now().duration_since(modified) {
-                return elapsed > Duration::from_secs(LOCK_TIMEOUT_SECS);
-            }
-        }
+    if let Ok(metadata) = fs::metadata(lock_path)
+        && let Ok(modified) = metadata.modified()
+        && let Ok(elapsed) = SystemTime::now().duration_since(modified)
+    {
+        return elapsed > Duration::from_secs(LOCK_TIMEOUT_SECS);
     }
+
     false
 }
 
 /// Acquire a lock for pkgx operations
+#[allow(dead_code)]
 pub fn acquire_lock() -> Result<PkgxLock> {
     let lock_path = get_lock_path()?;
     debug!("Attempting to acquire lock at: {}", lock_path.display());
 
     let mut retries = 0;
-    
+
     loop {
-        // Check if lock file exists
         if lock_path.exists() {
-            // Check if lock is stale
             if is_lock_stale(&lock_path) {
                 warn!("Found stale lock file, removing it");
                 let _ = fs::remove_file(&lock_path);
@@ -59,40 +62,45 @@ pub fn acquire_lock() -> Result<PkgxLock> {
                     LOCK_MAX_RETRIES
                 );
             } else {
-                // Wait and retry
-                debug!("Lock exists, waiting... (attempt {}/{})", retries + 1, LOCK_MAX_RETRIES);
+                debug!(
+                    "Lock exists, waiting... (attempt {}/{})",
+                    retries + 1,
+                    LOCK_MAX_RETRIES
+                );
                 std::thread::sleep(Duration::from_millis(LOCK_RETRY_DELAY_MS));
                 retries += 1;
                 continue;
             }
         }
 
-        // Try to create lock file
         match File::create(&lock_path) {
             Ok(mut file) => {
-                // Write current process info
                 let pid = std::process::id();
                 let timestamp = SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
                     .unwrap()
                     .as_secs();
-                
+
                 let lock_info = format!("pid={}\ntimestamp={}\n", pid, timestamp);
                 let _ = file.write_all(lock_info.as_bytes());
-                
+
                 info!("Lock acquired at: {}", lock_path.display());
-                
+
                 return Ok(PkgxLock {
                     lock_path,
                     acquired: true,
                 });
             }
             Err(e) => {
-                // If creation failed due to race condition, retry
                 if retries >= LOCK_MAX_RETRIES {
-                    anyhow::bail!("Failed to create lock file: {}", e);
+                    return Err(anyhow::anyhow!("Failed to create lockfile: {}", e));
                 }
-                debug!("Failed to create lock file (attempt {}/{}): {}", retries + 1, LOCK_MAX_RETRIES, e);
+                debug!(
+                    "Failed to create lockfile (attempt {}/{}): {}",
+                    retries + 1,
+                    LOCK_MAX_RETRIES,
+                    e
+                );
                 std::thread::sleep(Duration::from_millis(LOCK_RETRY_DELAY_MS));
                 retries += 1;
             }
@@ -111,8 +119,7 @@ impl PkgxLock {
     pub fn release(&mut self) -> Result<()> {
         if self.acquired {
             if self.lock_path.exists() {
-                fs::remove_file(&self.lock_path)
-                    .context("Failed to remove lock file")?;
+                fs::remove_file(&self.lock_path).context("Failed to remove lock file")?;
                 info!("Lock released at: {}", self.lock_path.display());
             }
             self.acquired = false;
@@ -146,17 +153,12 @@ mod tests {
     fn test_acquire_and_release_lock() {
         let mut lock = acquire_lock().expect("Failed to acquire lock");
         let lock_path = lock.lock_path.clone();
-        
-        // Lock file should exist
+
         assert!(lock_path.exists());
-        
-        // Release the lock
+
         lock.release().expect("Failed to release lock");
-        
-        // Lock file should not exist
+
         assert!(!lock_path.exists());
-        
-        // Releasing again should be safe (no error)
         assert!(lock.release().is_ok());
     }
 
@@ -165,55 +167,44 @@ mod tests {
         let lock_path = {
             let lock = acquire_lock().expect("Failed to acquire lock");
             lock.lock_path.clone()
-        }; // lock is dropped here
-        
-        // Give it a moment for cleanup
+        };
+
         thread::sleep(Duration::from_millis(10));
-        
-        // Lock file should not exist after drop
+
         assert!(!lock_path.exists());
     }
 
     #[test]
     fn test_concurrent_lock_acquisition() {
         use serial_test::serial;
-        
-        // This test is marked serial to avoid conflicts with other tests
+
         #[serial]
         fn test_impl() {
             let lock1 = acquire_lock().expect("Failed to acquire first lock");
-            
-            // Try to acquire lock in another thread
+
             let handle = thread::spawn(|| {
-                // This should fail or timeout quickly
                 let result = acquire_lock();
                 result.is_err() || result.is_ok()
             });
-            
-            // Wait a bit to ensure the second thread attempts to acquire lock
+
             thread::sleep(Duration::from_millis(200));
-            
-            // Drop first lock
+
             drop(lock1);
-            
-            // Second thread should eventually succeed or timeout
+
             let _ = handle.join();
         }
-        
+
         test_impl();
     }
 
     #[test]
     fn test_stale_lock_detection() {
         let lock_path = get_lock_path().expect("Failed to get lock path");
-        
-        // Create a lock file
+
         File::create(&lock_path).expect("Failed to create lock file");
-        
-        // Check if it's stale (should not be, as it's just created)
+
         assert!(!is_lock_stale(&lock_path));
-        
-        // Clean up
+
         let _ = fs::remove_file(&lock_path);
     }
 }

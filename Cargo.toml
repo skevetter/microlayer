@@ -12,7 +12,7 @@ default = []
 oci-distribution = ["dep:oci-client"]
 
 [package.metadata.cargo-machete]
-ignored = ["openssl"]
+ignored = ["openssl", "oci-client"]
 
 [target.'cfg(target_family = "unix")'.dependencies]
 libc = "0.2"

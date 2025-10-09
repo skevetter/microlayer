@@ -9,36 +9,11 @@ pub fn is_elevated() -> bool {
         let uid = unsafe { libc::geteuid() };
         uid == 0
     }
-    
+
     #[cfg(not(target_family = "unix"))]
     {
         false
     }
-}
-
-/// Check if a path can be written to by the current user
-pub fn can_write_to_path(path: &str) -> bool {
-    use std::path::Path;
-    
-    let path = Path::new(path);
-    
-    // Check if parent directory exists and is writable
-    if let Some(parent) = path.parent() {
-        if parent.exists() {
-            return std::fs::metadata(parent)
-                .map(|m| !m.permissions().readonly())
-                .unwrap_or(false);
-        }
-    }
-    
-    // If path exists, check if it's writable
-    if path.exists() {
-        return std::fs::metadata(path)
-            .map(|m| !m.permissions().readonly())
-            .unwrap_or(false);
-    }
-    
-    false
 }
 
 /// Request elevated privileges using sudo
@@ -58,7 +33,7 @@ pub fn elevate_prompt() -> Result<()> {
 
         Ok(())
     }
-    
+
     #[cfg(not(target_family = "unix"))]
     {
         anyhow::bail!("Privilege escalation is not supported on this platform")
@@ -114,32 +89,49 @@ pub fn execute_status(cmd: &str) -> Result<i32> {
 mod tests {
     use super::*;
 
+    /// Check if a path can be written to by the current user
+    pub fn can_write_to_path(path: &str) -> bool {
+        use std::path::Path;
+
+        let path = Path::new(path);
+
+        if let Some(parent) = path.parent() {
+            if parent.exists() {
+                return std::fs::metadata(parent)
+                    .map(|m| !m.permissions().readonly())
+                    .unwrap_or(false);
+            }
+        }
+
+        if path.exists() {
+            return std::fs::metadata(path)
+                .map(|m| !m.permissions().readonly())
+                .unwrap_or(false);
+        }
+
+        false
+    }
+
     #[test]
     fn test_is_elevated_returns_bool() {
-        // Should return a boolean value without panicking
         let result = is_elevated();
         assert!(result == true || result == false);
     }
 
     #[test]
     fn test_can_write_to_path_tmp() {
-        // /tmp should typically be writable
         let result = can_write_to_path("/tmp");
-        // On most systems this should be true, but we just test it doesn't panic
         assert!(result == true || result == false);
     }
 
     #[test]
     fn test_can_write_to_path_root() {
-        // /root should typically not be writable by regular users
         let result = can_write_to_path("/root/test");
-        // Just verify it returns a boolean
         assert!(result == true || result == false);
     }
 
     #[test]
     fn test_can_write_to_path_nonexistent() {
-        // Non-existent path should return false
         let result = can_write_to_path("/nonexistent/path/that/does/not/exist");
         assert_eq!(result, false);
     }

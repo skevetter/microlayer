@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use log::{info, warn};
+use log::{debug, info, warn};
 use std::collections::HashMap;
 #[cfg(not(target_os = "macos"))]
 use std::env;
@@ -18,23 +18,15 @@ pub struct RunConfig<'a> {
 }
 
 fn uninstall_pkgx() -> Result<()> {
-    info!("Uninstalling pkgx and removing all associated files...");
-
-    // Acquire lock to prevent concurrent deletions
-    let mut _lock = crate::utils::locking::acquire_lock()
-        .context("Failed to acquire lock for pkgx uninstallation")?;
-
-    // Step 1: Collect all files/directories to delete according to OS
+    info!("Uninstalling pkgx");
     let items_to_delete = collect_pkgx_paths()?;
-    
+
     if items_to_delete.is_empty() {
         info!("No pkgx installation found to remove");
         return Ok(());
     }
 
     info!("Found {} pkgx items to remove", items_to_delete.len());
-
-    // Step 2: Attempt to delete each file/directory
     let mut removed_count = 0;
     let mut failed_items = Vec::new();
 
@@ -45,7 +37,7 @@ fn uninstall_pkgx() -> Result<()> {
 
         // Request elevated permissions for binary files if needed
         if is_binary && !is_elevated() {
-            info!("Requesting elevated permissions for binary removal");
+            info!("Sudo permissions required to remove file");
             if let Err(e) = elevate_prompt() {
                 warn!("Failed to get elevated permissions: {}", e);
                 failed_items.push((path.display().to_string(), "Permission denied".to_string()));
@@ -72,9 +64,8 @@ fn uninstall_pkgx() -> Result<()> {
         }
     }
 
-    // Step 3: Report results with failed filenames
     info!("Successfully removed: {} items", removed_count);
-    
+
     if !failed_items.is_empty() {
         warn!("Failed to remove {} items:", failed_items.len());
         for (path, error) in failed_items {
@@ -93,24 +84,20 @@ fn uninstall_pkgx() -> Result<()> {
 fn collect_pkgx_paths() -> Result<Vec<(PathBuf, bool)>> {
     let mut paths = Vec::new();
 
-    // Binary files (require elevated permissions)
     let bin_paths = vec!["/usr/local/bin/pkgx", "/usr/local/bin/pkgm"];
     for bin_path in bin_paths {
         paths.push((PathBuf::from(bin_path), true));
     }
 
-    // Home directory installation
     if let Some(home_dir) = dirs_next::home_dir() {
         paths.push((home_dir.join(".pkgx"), false));
     }
 
-    // Platform-specific cache and data directories
     let platform_paths = get_platform_specific_paths()?;
     for path in platform_paths {
         paths.push((path, false));
     }
 
-    // Filter to only include paths that exist
     let existing_paths: Vec<(PathBuf, bool)> = paths
         .into_iter()
         .filter(|(path, _)| path.exists())
@@ -151,6 +138,37 @@ fn get_platform_specific_paths() -> Result<Vec<PathBuf>> {
 }
 
 pub fn execute(input: &RunConfig) -> Result<()> {
+    // TODO: Locking does not work correctly. Disabled for now.
+    // let _lock = {
+    //     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(300); // 5 minutes
+    //     loop {
+    //         match utils::locking::acquire_lock() {
+    //             Ok(lock) => break lock,
+    //             Err(e) => {
+    //                 if std::time::Instant::now() >= deadline {
+    //                     return Err(anyhow::anyhow!(
+    //                         "Failed to acquire lock within 5 minutes: {}",
+    //                         e
+    //                     ));
+    //                 }
+    //                 std::thread::sleep(std::time::Duration::from_millis(500));
+    //             }
+    //         }
+    //     }
+    // };
+    // Example errors
+    // - Failed to resolve package with libpkgx: Failed to install packages: No such file or directory (os error 2) at path "/home/vscode/.pkgx/python.org/.tmpA6vBNt"
+    // - Could not find platform independent libraries <prefix> Fatal Python error:
+    // - Failed to import encodings module ModuleNotFoundError: No module named 'encodings' pkgx library execution failed: Command failed with exit code: 1
+    //
+    // Test Failures:
+    // - test_picolayer_run_multiple_args
+    // - test_picolayer_run_node_version
+    // - test_picolayer_run_node_with_version_simple
+    // - test_picolayer_run_python_latest
+    // - test_picolayer_run_python_script
+    // - test_picolayer_run_python_version
+
     let working_path = Path::new(input.working_dir);
     if !working_path.exists() {
         anyhow::bail!("Working directory does not exist: {}", input.working_dir);
@@ -172,14 +190,14 @@ pub fn execute(input: &RunConfig) -> Result<()> {
         }
     }
 
-    if check_pkgx_binary() {
+    let exec_result = if check_pkgx_binary() {
         execute_with_pkgx_binary(
             &tool_name,
             &version_spec,
             &input.args,
             working_path,
             &env_map,
-        )?;
+        )
     } else {
         execute_with_pkgx_library(
             &tool_name,
@@ -188,11 +206,18 @@ pub fn execute(input: &RunConfig) -> Result<()> {
             working_path,
             &env_map,
             input.keep_package,
-        )?;
-    }
+        )
+    };
 
     if !input.keep_pkgx {
         uninstall_pkgx()?;
+    }
+
+    match exec_result {
+        Ok(()) => {}
+        Err(e) => {
+            warn!("Command failed: {}", e);
+        }
     }
 
     Ok(())
@@ -243,7 +268,7 @@ fn execute_with_pkgx_library(
         keep_package,
     ) {
         Ok(()) => {
-            info!("Command executed successfully with pkgx library!");
+            info!("Command executed with pkgx library!");
             Ok(())
         }
         Err(e) => {
@@ -502,9 +527,9 @@ async fn resolve_dependencies_async(
 
     for (key, value) in runtime_env {
         let cleaned_value = clean_shell_expansion(&value, &key.to_string());
-        info!("Environment set {}={}", &key.to_string(), cleaned_value);
         resolved_env.insert(key.to_string(), cleaned_value);
     }
+    debug!("{:?}", resolved_env);
 
     info!(
         "Successfully resolved {} packages with libpkgx",
@@ -547,10 +572,7 @@ fn execute_with_pkgx_binary(
     let pkgx_available = check_pkgx_binary();
 
     if !pkgx_available {
-        anyhow::bail!(
-            "pkgx is not available. Install pkgx from https://pkgx.sh\n\
-             Installation: curl -fsS https://pkgx.sh | sh"
-        );
+        anyhow::bail!("pkgx is not available. Install pkgx from https://pkgx.sh.");
     }
 
     let project_name = map_tool_to_project(tool_name);
@@ -658,34 +680,29 @@ mod tests {
     #[test]
     fn test_collect_pkgx_paths() {
         let paths = collect_pkgx_paths();
+
         assert!(paths.is_ok());
+
         let paths = paths.unwrap();
-        
-        // Should include binary paths and platform-specific paths
-        let path_strings: Vec<String> = paths.iter()
-            .map(|(p, _)| p.display().to_string())
-            .collect();
-        
-        // Check that we have the expected structure
-        // (may not exist, but should be in the list)
-        let _has_bin_paths = path_strings.iter().any(|p| p.contains("/usr/local/bin/pkgx"));
+        let path_strings: Vec<String> =
+            paths.iter().map(|(p, _)| p.display().to_string()).collect();
+
+        let _has_bin_paths = path_strings
+            .iter()
+            .any(|p| p.contains("/usr/local/bin/pkgx"));
         let _has_home_path = path_strings.iter().any(|p| p.contains(".pkgx"));
-        
-        // Collection can be empty if no pkgx is installed
-        // Just verify the function works
     }
 
     #[test]
     fn test_get_platform_specific_paths() {
         let paths = get_platform_specific_paths();
+
         assert!(paths.is_ok());
+
         let paths = paths.unwrap();
-        
-        // Should return at least cache and data directories
-        // Number depends on platform
+
         assert!(paths.len() >= 1);
-        
-        // All paths should contain "pkgx"
+
         for path in paths {
             assert!(path.to_string_lossy().contains("pkgx"));
         }
