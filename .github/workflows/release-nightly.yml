@@ -2,7 +2,7 @@ name: Nightly Release
 
 on:
   schedule:
-    - cron: '0 18 * * *'  # Run daily at 18:00 UTC
+    - cron: "0 18 * * *" # Run daily at 18:00 UTC
   workflow_dispatch:
 
 env:
@@ -27,7 +27,7 @@ jobs:
         id: check
         run: |
           # Get the latest release tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          LATEST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "")"
 
           if [ -z "$LATEST_TAG" ]; then
             echo "No previous releases found, building nightly"
@@ -36,7 +36,7 @@ jobs:
           fi
 
           # Check if there are new commits since the last release
-          COMMITS_SINCE_RELEASE=$(git rev-list ${LATEST_TAG}..HEAD --count)
+          COMMITS_SINCE_RELEASE="$(git rev-list ${LATEST_TAG}..HEAD --count)"
 
           if [ "$COMMITS_SINCE_RELEASE" -gt 0 ]; then
             echo "Found $COMMITS_SINCE_RELEASE new commits since $LATEST_TAG"
@@ -123,7 +123,9 @@ jobs:
 
   release:
     name: Create Nightly Release
-    needs: [check-commits, build]
+    needs:
+      - check-commits
+      - build
     if: needs.check-commits.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     steps:

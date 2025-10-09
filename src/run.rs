@@ -6,7 +6,18 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-pub fn uninstall_pkgx() -> Result<()> {
+use crate::utils::command::{elevate_prompt, is_elevated};
+
+pub struct RunConfig<'a> {
+    pub tool: &'a str,
+    pub args: Vec<String>,
+    pub working_dir: &'a str,
+    pub env_vars: Vec<String>,
+    pub keep_package: bool,
+    pub keep_pkgx: bool,
+}
+
+fn uninstall_pkgx() -> Result<()> {
     info!("Uninstalling pkgx and removing all associated files...");
 
     let mut removed_count = 0;
@@ -17,13 +28,21 @@ pub fn uninstall_pkgx() -> Result<()> {
     for bin_path in bin_paths {
         let path = PathBuf::from(bin_path);
         if path.exists() {
+            if !is_elevated() {
+                info!("User is not sudo");
+                elevate_prompt()?;
+            }
             match std::fs::remove_file(&path) {
                 Ok(()) => {
                     info!("Removed binary: {}", path.display());
                     removed_count += 1;
                 }
                 Err(e) => {
-                    warn!("Failed to remove {}: {} (try with sudo)", path.display(), e);
+                    if e.kind() == std::io::ErrorKind::PermissionDenied {
+                        warn!("Permission denied removing {}", path.display());
+                    } else {
+                        warn!("Failed to remove {}: {}", path.display(), e);
+                    }
                     error_count += 1;
                 }
             }
@@ -69,11 +88,9 @@ pub fn uninstall_pkgx() -> Result<()> {
         }
     }
 
-    info!("Uninstall Summary:");
     info!("Removed: {} items", removed_count);
     if error_count > 0 {
         warn!("Failed to remove: {} items", error_count);
-        info!("Some files may require sudo privileges to remove");
     }
 
     if removed_count > 0 {
@@ -116,34 +133,18 @@ fn get_platform_specific_paths() -> Result<Vec<PathBuf>> {
     Ok(paths)
 }
 
-pub fn execute(
-    tool: &str,
-    args: &[String],
-    working_dir: &str,
-    env_vars: &[String],
-    keep_package: bool,
-) -> Result<()> {
-    let working_path = Path::new(working_dir);
+pub fn execute(input: &RunConfig) -> Result<()> {
+    let working_path = Path::new(input.working_dir);
     if !working_path.exists() {
-        anyhow::bail!("Working directory does not exist: {}", working_dir);
+        anyhow::bail!("Working directory does not exist: {}", input.working_dir);
     }
-
-    let (tool_name, version_spec) = parse_tool_spec(tool);
-
-    info!(
-        "Executing: {} with tool: {} ({})",
-        args.join(" "),
-        tool_name,
-        version_spec
-    );
-    info!("Working directory: {}", working_dir);
-
-    if !keep_package {
-        info!("packages will be removed after execution");
-    }
+    let (tool_name, version_spec) = parse_tool_spec(input.tool);
+    info!("Working directory: {}", input.working_dir);
+    info!("Tool: {} ({})", tool_name, version_spec);
+    info!("Command: {}", input.args.join(" "));
 
     let mut env_map = Vec::new();
-    for env_var in env_vars {
+    for env_var in &input.env_vars {
         if let Some((key, value)) = env_var.split_once('=') {
             env_map.push((key.to_string(), value.to_string()));
         } else {
@@ -155,17 +156,29 @@ pub fn execute(
     }
 
     if check_pkgx_binary() {
-        return execute_with_pkgx_binary(&tool_name, &version_spec, args, working_path, &env_map);
+        execute_with_pkgx_binary(
+            &tool_name,
+            &version_spec,
+            &input.args,
+            working_path,
+            &env_map,
+        )?;
+    } else {
+        execute_with_pkgx_library(
+            &tool_name,
+            &version_spec,
+            &input.args,
+            working_path,
+            &env_map,
+            input.keep_package,
+        )?;
     }
 
-    execute_with_pkgx_library(
-        &tool_name,
-        &version_spec,
-        args,
-        working_path,
-        &env_map,
-        keep_package,
-    )
+    if !input.keep_pkgx {
+        uninstall_pkgx()?;
+    }
+
+    Ok(())
 }
 
 fn parse_tool_spec(tool: &str) -> (String, String) {
@@ -189,6 +202,7 @@ fn map_tool_to_project(tool_name: &str) -> String {
         "git" => "git-scm.org".to_string(),
         "deno" => "deno.land".to_string(),
         "bun" => "bun.sh".to_string(),
+        "bash" => "gnu.org/bash".to_string(),
         _ => tool_name.to_string(),
     }
 }
@@ -301,7 +315,7 @@ fn try_libpkgx_execution(
                 }
             }
 
-            info!("Successfully resolved package with libpkgx");
+            info!("Resolved package with libpkgx");
 
             let mut cmd = Command::new(tool_name);
             cmd.args(args);
@@ -337,7 +351,6 @@ fn try_libpkgx_execution(
     };
 
     if !keep_package && !paths_to_cleanup.is_empty() {
-        info!("Cleaning up ephemeral installations...");
         for path in paths_to_cleanup {
             if let Err(e) = cleanup_installation(&path) {
                 warn!("Failed to cleanup {}: {}", path.display(), e);

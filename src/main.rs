@@ -7,6 +7,7 @@ mod utils;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use env_logger::Env;
 use log::info;
 
 #[derive(Parser)]
@@ -113,7 +114,7 @@ fn normalize_pkg_input(packages: String) -> Vec<String> {
 }
 
 fn main() -> Result<()> {
-    env_logger::init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
     info!("Starting picolayer");
 
     let cli = Cli::parse();
@@ -126,19 +127,16 @@ fn main() -> Result<()> {
         } => {
             let pkg_list: Vec<String> = normalize_pkg_input(packages);
             let ppa_list: Option<Vec<String>> = ppas.map(normalize_pkg_input);
-
             apt_get::install(&pkg_list, ppa_list.as_deref(), force_ppas_on_non_ubuntu)?;
         }
 
         Commands::Apk { packages } => {
             let pkg_list: Vec<String> = normalize_pkg_input(packages);
-
             apk::install(&pkg_list)?;
         }
 
         Commands::Brew { packages } => {
             let pkg_list: Vec<String> = normalize_pkg_input(packages);
-
             brew::install(&pkg_list)?;
         }
 
@@ -156,7 +154,7 @@ fn main() -> Result<()> {
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .collect();
-            let input = gh_release::GhReleaseInput {
+            gh_release::install(&gh_release::GhReleaseConfig {
                 repo: &repo,
                 binary_names: &binary_list,
                 version: &version,
@@ -165,8 +163,7 @@ fn main() -> Result<()> {
                 verify_checksum,
                 checksum_text: checksum_text.as_deref(),
                 gpg_key: gpg_key.as_deref(),
-            };
-            gh_release::install(input)?;
+            })?;
         }
 
         Commands::Run {
@@ -177,12 +174,14 @@ fn main() -> Result<()> {
             keep_package,
             keep_pkgx,
         } => {
-            if keep_pkgx {
-                run::uninstall_pkgx()?;
-                return Ok(());
-            }
-
-            run::execute(&tool, &args, &working_dir, &env, keep_package)?;
+            run::execute(&run::RunConfig {
+                tool: &tool,
+                args,
+                working_dir: &working_dir,
+                env_vars: env,
+                keep_package,
+                keep_pkgx,
+            })?;
         }
     }
 

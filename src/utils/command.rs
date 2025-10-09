@@ -1,6 +1,24 @@
 use anyhow::{Context, Result};
 use std::process::{Command, Stdio};
 
+pub fn is_elevated() -> bool {
+    let uid = unsafe { libc::geteuid() };
+    uid == 0
+}
+
+pub fn elevate_prompt() -> Result<()> {
+    let status = Command::new("sudo")
+        .arg("-k")
+        .status()
+        .context("Failed to invoke sudo")?;
+
+    if !status.success() {
+        anyhow::bail!("Failed to prompt for sudo access");
+    }
+
+    Ok(())
+}
+
 /// Execute a shell command and return success/failure
 pub fn execute(cmd: &str) -> Result<()> {
     execute_with_output(cmd, true)?;

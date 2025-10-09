@@ -28,7 +28,7 @@ struct Asset {
 }
 
 /// Configuration for installing a GitHub release
-pub struct GhReleaseInput<'a> {
+pub struct GhReleaseConfig<'a> {
     pub repo: &'a str,
     pub binary_names: &'a [String],
     pub version: &'a str,
@@ -40,7 +40,7 @@ pub struct GhReleaseInput<'a> {
 }
 
 /// Install binaries from a GitHub release
-pub fn install(input: GhReleaseInput) -> Result<()> {
+pub fn install(input: &GhReleaseConfig) -> Result<()> {
     Installer::new().install(input)
 }
 
@@ -55,7 +55,7 @@ impl Installer {
         }
     }
 
-    fn install(&self, config: GhReleaseInput) -> Result<()> {
+    fn install(&self, config: &GhReleaseConfig) -> Result<()> {
         info!("Fetching release information for {}", config.repo);
         let release = self.fetch_release(config.repo, config.version)?;
         info!("Installing from release: {}", release.tag_name);

@@ -6,6 +6,7 @@ use std::path::Path;
 
 const PPA_SUPPORT_PACKAGES: &[&str] = &["software-properties-common"];
 const PPA_SUPPORT_PACKAGES_DEBIAN: &[&str] = &["python3-launchpadlib"];
+const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
 
 /// Install packages using apt-get with optional PPAs
 pub fn install(
@@ -29,9 +30,10 @@ pub fn install(
     let temp_dir = tempfile::tempdir().context("Failed to create temp directory")?;
     let cache_backup = temp_dir.path().join("lists");
 
-    if Path::new("/var/lib/apt/lists").exists() {
+    if Path::new(APT_LISTS_DIR).exists() {
         command::execute(&format!(
-            "cp -p -R /var/lib/apt/lists {}",
+            "cp -p -R {} {}",
+            APT_LISTS_DIR,
             cache_backup.display()
         ))?;
     }
@@ -66,10 +68,9 @@ fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Pat
     }
 
     command::execute("apt-get clean")?;
-    command::execute("rm -rf /var/lib/apt/lists")?;
+    command::execute(&format!("rm -rf {}", APT_LISTS_DIR))?;
     if cache_backup.exists() {
-        fs::rename(cache_backup, "/var/lib/apt/lists")
-            .context("Failed to restore apt lists cache")?;
+        fs::rename(cache_backup, APT_LISTS_DIR).context("Failed to restore apt lists cache")?;
     }
 
     Ok(())
