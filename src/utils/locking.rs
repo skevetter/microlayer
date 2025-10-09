@@ -5,17 +5,12 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
-#[allow(dead_code)]
 const LOCK_FILE_NAME: &str = ".picolayer.lock";
-#[allow(dead_code)]
 const LOCK_TIMEOUT_SECS: u64 = 300; // 5 minutes
-#[allow(dead_code)]
 const LOCK_RETRY_DELAY_MS: u64 = 100;
-#[allow(dead_code)]
 const LOCK_MAX_RETRIES: u32 = 50;
 
 /// Get the lock file path for pkgx operations
-#[allow(dead_code)]
 fn get_lock_path() -> Result<PathBuf> {
     let lock_dir = if let Some(home_dir) = dirs_next::home_dir() {
         home_dir.join(".pkgx")
@@ -31,7 +26,6 @@ fn get_lock_path() -> Result<PathBuf> {
 }
 
 /// Check if a lock file is stale (older than timeout)
-#[allow(dead_code)]
 fn is_lock_stale(lock_path: &PathBuf) -> bool {
     if let Ok(metadata) = fs::metadata(lock_path)
         && let Ok(modified) = metadata.modified()
@@ -44,7 +38,6 @@ fn is_lock_stale(lock_path: &PathBuf) -> bool {
 }
 
 /// Acquire a lock for pkgx operations
-#[allow(dead_code)]
 pub fn acquire_lock() -> Result<PkgxLock> {
     let lock_path = get_lock_path()?;
     debug!("Attempting to acquire lock at: {}", lock_path.display());

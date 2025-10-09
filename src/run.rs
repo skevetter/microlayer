@@ -18,7 +18,12 @@ pub struct RunConfig<'a> {
 }
 
 fn uninstall_pkgx() -> Result<()> {
-    info!("Uninstalling pkgx");
+    info!("Uninstalling pkgx and removing all associated files...");
+
+    // Acquire lock to prevent concurrent deletions
+    let _lock = crate::utils::locking::acquire_lock()
+        .context("Failed to acquire lock for pkgx uninstallation")?;
+
     let items_to_delete = collect_pkgx_paths()?;
 
     if items_to_delete.is_empty() {
