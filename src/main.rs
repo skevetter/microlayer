@@ -127,16 +127,35 @@ fn main() -> Result<()> {
         } => {
             let pkg_list: Vec<String> = normalize_pkg_input(packages);
             let ppa_list: Option<Vec<String>> = ppas.map(normalize_pkg_input);
+            
+            // Track analytics
+            let _ = utils::analytics::track_command("apt-get", Some(serde_json::json!({
+                "package_count": pkg_list.len(),
+                "has_ppas": ppa_list.is_some(),
+            })));
+            
             apt_get::install(&pkg_list, ppa_list.as_deref(), force_ppas_on_non_ubuntu)?;
         }
 
         Commands::Apk { packages } => {
             let pkg_list: Vec<String> = normalize_pkg_input(packages);
+            
+            // Track analytics
+            let _ = utils::analytics::track_command("apk", Some(serde_json::json!({
+                "package_count": pkg_list.len(),
+            })));
+            
             apk::install(&pkg_list)?;
         }
 
         Commands::Brew { packages } => {
             let pkg_list: Vec<String> = normalize_pkg_input(packages);
+            
+            // Track analytics
+            let _ = utils::analytics::track_command("brew", Some(serde_json::json!({
+                "package_count": pkg_list.len(),
+            })));
+            
             brew::install(&pkg_list)?;
         }
 
@@ -154,6 +173,17 @@ fn main() -> Result<()> {
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .collect();
+            
+            // Track analytics
+            let _ = utils::analytics::track_command("gh-release", Some(serde_json::json!({
+                "repo": repo,
+                "binary_count": binary_list.len(),
+                "version": version,
+                "has_filter": filter.is_some(),
+                "verify_checksum": verify_checksum,
+                "has_gpg_key": gpg_key.is_some(),
+            })));
+            
             gh_release::install(&gh_release::GhReleaseConfig {
                 repo: &repo,
                 binary_names: &binary_list,
@@ -174,6 +204,15 @@ fn main() -> Result<()> {
             keep_package,
             keep_pkgx,
         } => {
+            // Track analytics
+            let _ = utils::analytics::track_command("run", Some(serde_json::json!({
+                "tool": tool,
+                "arg_count": args.len(),
+                "env_count": env.len(),
+                "keep_package": keep_package,
+                "keep_pkgx": keep_pkgx,
+            })));
+            
             run::execute(&run::RunConfig {
                 tool: &tool,
                 args,
