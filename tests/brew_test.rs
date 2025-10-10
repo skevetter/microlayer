@@ -6,7 +6,11 @@ use common::run_picolayer;
 #[cfg(target_os = "macos")]
 use std::process::Command;
 
+#[cfg(target_os = "macos")]
+use serial_test::serial;
+
 #[test]
+#[serial]
 #[cfg(target_os = "macos")]
 fn test_brew_installation() {
     let has_brew = Command::new("which")
@@ -35,6 +39,7 @@ fn test_brew_installation() {
 }
 
 #[test]
+#[serial]
 #[cfg(target_os = "macos")]
 fn test_brew_multiple_packages() {
     let has_brew = Command::new("which")
