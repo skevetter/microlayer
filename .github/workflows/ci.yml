@@ -9,6 +9,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_LOG: debug
+  RUST_BACKTRACE: 1
 
 jobs:
   build:
@@ -37,7 +39,7 @@ jobs:
         run: cargo build --release
 
       - name: Run tests
-        run: cargo test
+        run: cargo test -- --nocapture
 
       - name: Check binary size
         run: |
