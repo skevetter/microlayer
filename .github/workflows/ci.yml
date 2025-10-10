@@ -5,21 +5,27 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_LOG: debug
+  RUST_BACKTRACE: 1
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
 
     steps:
       - uses: actions/checkout@v5
@@ -28,6 +34,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           components: rustfmt, clippy
+          targets: ${{ matrix.target }}
 
       - name: Check formatting
         run: cargo fmt -- --check
@@ -35,11 +42,19 @@ jobs:
       - name: Clippy
         run: cargo clippy -- -D warnings
 
-      - name: Build
-        run: cargo build --release
+      - name: Install dependencies for cross-compilation (Linux aarch64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Run tests
-        run: cargo test
+        run: cargo test -- --nocapture
+
+      - name: Build Release
+        run: cargo build --release --target "${{ matrix.target }}"
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
       - name: Check binary size
         run: |

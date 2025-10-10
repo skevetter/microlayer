@@ -1,9 +1,10 @@
 mod common;
-
 #[cfg(target_os = "linux")]
 use common::run_picolayer;
 #[cfg(target_os = "linux")]
-use std::process::Command;
+use picolayer::utils::command;
+#[cfg(target_os = "linux")]
+use serial_test::serial;
 
 #[cfg(target_os = "linux")]
 fn stderr_indicates_permission_issue(output: &std::process::Output) -> bool {
@@ -17,12 +18,14 @@ fn stderr_indicates_permission_issue(output: &std::process::Output) -> bool {
 }
 
 #[test]
+#[serial]
 #[cfg(target_os = "linux")]
 fn test_apt_get_installation() {
-    let has_apt = Command::new("which")
+    let has_apt = command::CommandExecutor::new()
+        .command("which")
         .arg("apt-get")
-        .output()
-        .map(|o| o.status.success())
+        .execute_status()
+        .map(|o| o.is_success())
         .unwrap_or(false);
 
     if !has_apt {
@@ -47,12 +50,14 @@ fn test_apt_get_installation() {
 }
 
 #[test]
+#[serial]
 #[cfg(target_os = "linux")]
 fn test_apt_get_with_ppas() {
-    let has_apt = Command::new("which")
+    let has_apt = command::CommandExecutor::new()
+        .command("which")
         .arg("apt-get")
-        .output()
-        .map(|o| o.status.success())
+        .execute_status()
+        .map(|o| o.is_success())
         .unwrap_or(false);
 
     if !has_apt {
@@ -79,10 +84,11 @@ fn test_apt_get_with_ppas() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_apt_get_simulate_install() {
-    let has_apt = Command::new("which")
+    let has_apt = command::CommandExecutor::new()
+        .command("which")
         .arg("apt-get")
-        .output()
-        .map(|o| o.status.success())
+        .execute_status()
+        .map(|status| status.is_success())
         .unwrap_or(false);
 
     if !has_apt {
@@ -120,12 +126,14 @@ fn test_apt_get_simulate_install() {
 }
 
 #[test]
+#[serial]
 #[cfg(target_os = "linux")]
 fn test_apt_get_update_is_skippable_on_permission_issues() {
-    let has_apt = Command::new("which")
+    let has_apt = command::CommandExecutor::new()
+        .command("which")
         .arg("apt-get")
-        .output()
-        .map(|o| o.status.success())
+        .execute_status()
+        .map(|o| o.is_success())
         .unwrap_or(false);
 
     if !has_apt {
@@ -133,7 +141,7 @@ fn test_apt_get_update_is_skippable_on_permission_issues() {
         return;
     }
 
-    let output = run_picolayer(&["apt-get", "update"]);
+    let output = run_picolayer(&["apt-get", "curl"]);
 
     if !output.status.success() {
         if stderr_indicates_permission_issue(&output) {
