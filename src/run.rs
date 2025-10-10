@@ -4,7 +4,8 @@ use std::collections::HashMap;
 #[cfg(not(target_os = "macos"))]
 use std::env;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+
+use crate::utils::command;
 
 const PKGX_BIN_PATHS: [&str; 2] = ["/usr/local/bin/pkgx", "/usr/local/bin/pkgm"];
 #[cfg(target_os = "macos")]
@@ -236,7 +237,7 @@ fn execute_with_pkgx_library(
         }
         Err(e) => {
             warn!("pkgx library execution failed: {}", e);
-            info!("Falling back to pkgx binary execution...");
+            info!("Falling back to pkgx binary execution");
             execute_with_pkgx_binary(tool_name, version_spec, args, working_path, env_map)
         }
     }
@@ -256,16 +257,12 @@ fn try_libpkgx_execution(
         anyhow::bail!("No arguments provided for tool: {}", tool_name);
     }
 
-    // Resolve tool to project using pantry database
-    let (project_name, tool_spec) = crate::utils::pkgx::resolve_tool_to_project(tool_name, version_spec)?;
+    let (project_name, tool_spec) =
+        crate::utils::pkgx::resolve_tool_to_project(tool_name, version_spec)?;
 
     info!("Resolving package: {}", tool_spec);
     let mut cmd_env = HashMap::new();
     for (key, value) in env::vars() {
-        // Overwrite Go environment variables that might be set by Mise or other shellenv tools
-        if tool_name == "go" && (key == "GOROOT" || key == "GOPATH") {
-            continue;
-        }
         cmd_env.insert(key, value);
     }
 
@@ -275,23 +272,10 @@ fn try_libpkgx_execution(
 
     let mut paths_to_cleanup = Vec::new();
 
-    let execution_result = match crate::utils::hydrate::resolve_package_with_libpkgx(&[tool_spec]) {
+    let execution_result = match crate::utils::pkgx::resolve_package_with_libpkgx(&[tool_spec]) {
         Ok((pkgx_env, installations)) => {
             for (key, value) in pkgx_env {
                 cmd_env.insert(key, value);
-            }
-
-            // Overwrite GOROOT for Go installations due to conflicts with Mise or other shellenv tools
-            if tool_name == "go" {
-                for installation in &installations {
-                    if installation.pkg.project == project_name {
-                        cmd_env.insert(
-                            "GOROOT".to_string(),
-                            installation.path.to_string_lossy().to_string(),
-                        );
-                        break;
-                    }
-                }
             }
 
             for installation in &installations {
@@ -314,33 +298,24 @@ fn try_libpkgx_execution(
             }
 
             info!("Resolved package with libpkgx");
-            let mut cmd = Command::new(tool_name);
-            cmd.args(args);
-            cmd.current_dir(working_path);
-            cmd.env_clear();
-            for (key, value) in &cmd_env {
-                cmd.env(key, value);
-            }
-
-            cmd.stdout(Stdio::inherit());
-            cmd.stderr(Stdio::inherit());
-            cmd.stdin(Stdio::inherit());
-
-            let status = cmd
-                .status()
+            command::CommandExecutor::new()
+                .command(tool_name)
+                .args(&args.iter().map(|arg| arg.as_str()).collect::<Vec<&str>>())
+                .working_directory(working_path.to_str().context("Invalid working directory")?)
+                .envs(
+                    &cmd_env
+                        .iter()
+                        .map(|(k, v)| (k.as_str(), v.as_str()))
+                        .collect::<Vec<(&str, &str)>>(),
+                )
+                .output_mode(command::OutputMode::Inherit)
+                .execute_status()
                 .context("Failed to execute command with libpkgx")?;
-
-            if !status.success() {
-                anyhow::bail!(
-                    "Command failed with exit code: {}",
-                    status.code().unwrap_or(-1)
-                );
-            }
 
             Ok(())
         }
         Err(e) => {
-            warn!("Failed to resolve package with libpkgx: {}", e);
+            warn!("Failed to resolve package with libpkgx");
             Err(e)
         }
     };
@@ -359,19 +334,6 @@ fn try_libpkgx_execution(
     execution_result
 }
 
-fn cleanup_installation(path: &PathBuf) -> Result<()> {
-    if path.exists() {
-        if path.is_dir() {
-            std::fs::remove_dir_all(path)
-                .with_context(|| format!("Failed to remove directory: {}", path.display()))?;
-        } else {
-            std::fs::remove_file(path)
-                .with_context(|| format!("Failed to remove file: {}", path.display()))?;
-        }
-    }
-    Ok(())
-}
-
 fn execute_with_pkgx_binary(
     tool_name: &str,
     version_spec: &str,
@@ -387,39 +349,41 @@ fn execute_with_pkgx_binary(
 
     let (project_name, _) = crate::utils::pkgx::resolve_tool_to_project(tool_name, version_spec)?;
 
-    let mut cmd = Command::new("pkgx");
-
-    if version_spec == "latest" {
-        cmd.arg(format!("+{}", project_name));
+    let project_arg = if version_spec == "latest" {
+        format!("+{}", project_name)
     } else {
-        cmd.arg(format!("+{}@{}", project_name, version_spec));
-    }
+        format!("+{}@{}", project_name, version_spec)
+    };
 
-    cmd.arg(tool_name);
-    cmd.args(args);
-
-    cmd.current_dir(working_path);
-
-    for (key, value) in env_map {
-        cmd.env(key, value);
-    }
-
-    cmd.stdout(Stdio::inherit());
-    cmd.stderr(Stdio::inherit());
-    cmd.stdin(Stdio::inherit());
-
-    let status = cmd
-        .status()
+    command::CommandExecutor::new()
+        .command("pkgx")
+        .arg(&project_arg)
+        .arg(tool_name)
+        .args(&args.iter().map(|arg| arg.as_str()).collect::<Vec<&str>>())
+        .working_directory(working_path.to_str().context("Invalid working directory")?)
+        .envs(
+            &env_map
+                .iter()
+                .map(|(k, v)| (k.as_str(), v.as_str()))
+                .collect::<Vec<(&str, &str)>>(),
+        )
+        .output_mode(command::OutputMode::Inherit)
+        .execute_status()
         .context("Failed to execute command with pkgx")?;
 
-    if !status.success() {
-        anyhow::bail!(
-            "Command failed with exit code: {}",
-            status.code().unwrap_or(-1)
-        );
-    }
+    Ok(())
+}
 
-    info!("Command executed successfully!");
+fn cleanup_installation(path: &PathBuf) -> Result<()> {
+    if path.exists() {
+        if path.is_dir() {
+            std::fs::remove_dir_all(path)
+                .with_context(|| format!("Failed to remove directory: {}", path.display()))?;
+        } else {
+            std::fs::remove_file(path)
+                .with_context(|| format!("Failed to remove file: {}", path.display()))?;
+        }
+    }
     Ok(())
 }
 
@@ -456,7 +420,6 @@ mod tests {
         std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
         let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
 
-        // Sync the database if needed
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             if sync::should(&config).unwrap_or(false) {
@@ -464,10 +427,8 @@ mod tests {
             }
         });
 
-        // Test resolution for common tools
         let result = crate::utils::pkgx::map_tool_to_project("python", &conn);
         assert!(result.is_ok());
-        // The result should be a valid project name (e.g., "python.org")
         let project = result.unwrap();
         assert!(!project.is_empty());
     }
@@ -480,7 +441,6 @@ mod tests {
         std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
         let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
 
-        // Sync the database if needed
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             if sync::should(&config).unwrap_or(false) {
@@ -502,7 +462,6 @@ mod tests {
         std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
         let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
 
-        // Sync the database if needed
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             if sync::should(&config).unwrap_or(false) {
@@ -524,7 +483,6 @@ mod tests {
         std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
         let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
 
-        // Sync the database if needed
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             if sync::should(&config).unwrap_or(false) {
@@ -546,7 +504,6 @@ mod tests {
         std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
         let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
 
-        // Sync the database if needed
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             if sync::should(&config).unwrap_or(false) {
@@ -556,26 +513,22 @@ mod tests {
 
         let result = crate::utils::pkgx::map_tool_to_project("unknown-tool-xyz-not-real", &conn);
         assert!(result.is_ok());
-        // Unknown tools should fall back to the tool name itself
         let project = result.unwrap();
         assert_eq!(project, "unknown-tool-xyz-not-real");
     }
 
     #[test]
     fn test_resolve_tool_to_project() {
-        // Test the full resolution flow including version spec
         let result = crate::utils::pkgx::resolve_tool_to_project("node", "latest");
         match &result {
             Ok(_) => {
                 let (project, spec) = result.unwrap();
                 assert!(!project.is_empty());
-                assert_eq!(spec, project); // "latest" should just return the project name
+                assert_eq!(spec, project);
             }
             Err(e) => {
-                // If sync fails (e.g., network issue, 403 error), skip the test
                 eprintln!("Skipping test due to sync error: {}", e);
                 if e.to_string().contains("403 Forbidden") || e.to_string().contains("HTTP") {
-                    // This is expected in CI/testing environments with rate limiting
                     return;
                 }
                 panic!("Unexpected error: {}", e);
@@ -608,7 +561,6 @@ mod tests {
         std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
         let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
 
-        // Sync the database if needed
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             if sync::should(&config).unwrap_or(false) {
@@ -616,7 +568,6 @@ mod tests {
             }
         });
 
-        // Test various common tools
         let tools = vec!["bash", "git", "curl", "wget", "make"];
         for tool in tools {
             let result = crate::utils::pkgx::map_tool_to_project(tool, &conn);

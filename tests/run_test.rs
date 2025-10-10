@@ -200,7 +200,13 @@ fn test_picolayer_run_node_with_version_simple() {
 #[test]
 #[serial]
 fn test_picolayer_run_node_inline_code() {
-    let output = run_picolayer(&["run", "node", "-e", "console.log('Hello from Node.js!')"]);
+    let output = run_picolayer(&[
+        "run",
+        "node",
+        "--",
+        "-e",
+        "console.log('Hello from Node.js!')",
+    ]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -247,6 +253,7 @@ fn test_picolayer_run_with_env_vars() {
         "--env",
         "TEST_VAR=hello_world",
         "python",
+        "--",
         "-c",
         "import os; print(f'TEST_VAR={os.environ.get(\"TEST_VAR\", \"not found\")}')",
     ]);
@@ -279,11 +286,12 @@ fn test_picolayer_run_with_keep_pkgx() {
 fn test_picolayer_run_rust_with_version() {
     let output = run_picolayer(&["run", "rustc@1.70", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
         println!("Error: {}", stderr);
     };
     println!("Output: {}", stdout);
+    println!("Output: {}", stderr);
 
     assert!(stdout.contains("rustc 1.70"));
 }

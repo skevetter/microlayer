@@ -4,7 +4,6 @@ target/
 *.pdb
 
 # Editor
-.vscode/
 .idea/
 *.swp
 *.swo
