@@ -30,7 +30,8 @@ pub fn install(
     let cache_backup = temp_dir.path().join("lists");
 
     if Path::new(APT_LISTS_DIR).exists() {
-        command::CommandBuilder::new("cp")
+        command::CommandExecutor::new()
+            .command("cp")
             .arg("-p")
             .arg("-R")
             .arg(APT_LISTS_DIR)
@@ -43,7 +44,8 @@ pub fn install(
 }
 
 fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Path) -> Result<()> {
-    command::CommandBuilder::new("apt-get")
+    command::CommandExecutor::new()
+        .command("apt-get")
         .arg("update")
         .arg("-y")
         .execute_privileged()
@@ -60,7 +62,8 @@ fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Pat
 
     let pkgs: Vec<&str> = packages.iter().map(|s| s.as_str()).collect();
 
-    command::CommandBuilder::new("apt-get")
+    command::CommandExecutor::new()
+        .command("apt-get")
         .arg("install")
         .arg("-y")
         .arg("--no-install-recommends")
@@ -69,7 +72,8 @@ fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Pat
         .context("Failed to install apt packages")?;
 
     for ppa in &installed_ppas {
-        command::CommandBuilder::new("add-apt-repository")
+        command::CommandExecutor::new()
+            .command("add-apt-repository")
             .arg("-y")
             .arg("--remove")
             .arg(ppa)
@@ -78,7 +82,8 @@ fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Pat
     }
 
     for pkg in &installed_ppa_packages {
-        command::CommandBuilder::new("apt-get")
+        command::CommandExecutor::new()
+            .command("apt-get")
             .arg("-y")
             .arg("purge")
             .arg(pkg)
@@ -87,11 +92,13 @@ fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Pat
             .context("Failed to purge package")?;
     }
 
-    command::CommandBuilder::new("apt-get")
+    command::CommandExecutor::new()
+        .command("apt-get")
         .arg("clean")
         .execute_privileged()
         .context("Failed to clean apt cache")?;
-    command::CommandBuilder::new("rm")
+    command::CommandExecutor::new()
+        .command("rm")
         .arg("-rf")
         .arg(APT_LISTS_DIR)
         .execute_privileged()
@@ -142,7 +149,8 @@ pub fn add_ppas(ppas: &[String]) -> Result<(Vec<String>, Vec<String>)> {
             .map(|output| output.exit_code)?;
 
         if status != 0 {
-            command::CommandBuilder::new("apt-get")
+            command::CommandExecutor::new()
+                .command("apt-get")
                 .arg("install")
                 .arg("-y")
                 .arg(pkg)
@@ -152,14 +160,16 @@ pub fn add_ppas(ppas: &[String]) -> Result<(Vec<String>, Vec<String>)> {
     }
 
     for ppa in &normalized_ppas {
-        command::CommandBuilder::new("add-apt-repository")
+        command::CommandExecutor::new()
+            .command("add-apt-repository")
             .arg("-y")
             .arg(ppa)
             .execute_privileged()?;
         installed_ppas.push(ppa.clone());
     }
 
-    command::CommandBuilder::new("apt-get")
+    command::CommandExecutor::new()
+        .command("apt-get")
         .arg("update")
         .arg("-y")
         .execute_privileged()?;
