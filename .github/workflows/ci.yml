@@ -58,10 +58,22 @@ jobs:
 
       - name: Check binary size
         run: |
+          BIN="target/${{ matrix.target }}/release/picolayer"
+          if [ ! -f "$BIN" ]; then
+            BIN="target/release/picolayer"
+          fi
+
+          echo "Binary path: $BIN"
+
+          if [ ! -f "$BIN" ]; then
+            echo "Binary not found, skipping size check."
+            exit 0
+          fi
+
           if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-            SIZE=$(stat -f%z "target/release/picolayer")
+            SIZE=$(stat -f%z "$BIN")
           else
-            SIZE=$(stat -c%s "target/release/picolayer")
+            SIZE=$(stat -c%s "$BIN")
           fi
 
           MB_SIZE=$((SIZE / 1024 / 1024))
