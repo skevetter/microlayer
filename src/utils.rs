@@ -1,7 +1,10 @@
 pub mod analytics;
 pub mod command;
+pub mod hydrate;
 pub mod linux_info;
 pub mod locking;
+pub mod pantry;
+pub mod pkgx;
 
 #[cfg(test)]
 mod tests {

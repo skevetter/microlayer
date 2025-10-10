@@ -171,7 +171,7 @@ pub fn execute(input: &RunConfig) -> Result<()> {
         }
     }
 
-    let exec_result = if check_pkgx_binary() {
+    let exec_result = if crate::utils::pkgx::check_pkgx_binary() {
         execute_with_pkgx_binary(
             &tool_name,
             &version_spec,
@@ -210,71 +210,6 @@ fn parse_tool_spec(tool: &str) -> (String, String) {
     } else {
         (tool.to_string(), "latest".to_string())
     }
-}
-
-fn map_tool_to_project(tool_name: &str, conn: &rusqlite::Connection) -> Result<String> {
-    // Query pkgx pantry database to resolve tool to project
-    let tool_name_string = tool_name.to_string();
-    match libpkgx::pantry_db::projects_for_symbol(&tool_name_string, conn) {
-        Ok(projects) if !projects.is_empty() => {
-            if projects.len() == 1 {
-                Ok(projects[0].clone())
-            } else {
-                // Multiple projects provide this tool, use the first one
-                // In the future, we might want to add logic to choose the best one
-                info!(
-                    "Multiple projects provide '{}': {:?}, using {}",
-                    tool_name, projects, projects[0]
-                );
-                Ok(projects[0].clone())
-            }
-        }
-        Ok(_) => {
-            // No project found in pantry_db, fall back to tool name as project
-            warn!(
-                "No project found for tool '{}' in pantry database, using tool name as project",
-                tool_name
-            );
-            Ok(tool_name.to_string())
-        }
-        Err(e) => {
-            warn!(
-                "Failed to query pantry database for tool '{}': {}, using tool name as project",
-                tool_name, e
-            );
-            Ok(tool_name.to_string())
-        }
-    }
-}
-
-fn resolve_tool_to_project(tool_name: &str, version_spec: &str) -> Result<(String, String)> {
-    use libpkgx::{config::Config, sync};
-
-    let config = Config::new().context("Failed to initialize libpkgx config")?;
-    std::fs::create_dir_all(config.pantry_db_file.parent().unwrap())?;
-    let mut conn = rusqlite::Connection::open(&config.pantry_db_file)?;
-
-    // Sync if needed
-    if sync::should(&config).map_err(|e| anyhow::anyhow!("{}", e))? {
-        info!("Syncing pkgx pantry database...");
-        let rt = tokio::runtime::Runtime::new()
-            .context("Failed to create Tokio runtime for sync")?;
-        rt.block_on(async {
-            sync::ensure(&config, &mut conn)
-                .await
-                .map_err(|e| anyhow::anyhow!("{}", e))
-        })?;
-    }
-
-    let project_name = map_tool_to_project(tool_name, &conn)?;
-
-    let tool_spec = if version_spec == "latest" {
-        project_name.clone()
-    } else {
-        format!("{}@{}", project_name, version_spec)
-    };
-
-    Ok((project_name, tool_spec))
 }
 
 fn execute_with_pkgx_library(
@@ -322,7 +257,7 @@ fn try_libpkgx_execution(
     }
 
     // Resolve tool to project using pantry database
-    let (project_name, tool_spec) = resolve_tool_to_project(tool_name, version_spec)?;
+    let (project_name, tool_spec) = crate::utils::pkgx::resolve_tool_to_project(tool_name, version_spec)?;
 
     info!("Resolving package: {}", tool_spec);
     let mut cmd_env = HashMap::new();
@@ -340,7 +275,7 @@ fn try_libpkgx_execution(
 
     let mut paths_to_cleanup = Vec::new();
 
-    let execution_result = match resolve_package_with_libpkgx(&[tool_spec]) {
+    let execution_result = match crate::utils::hydrate::resolve_package_with_libpkgx(&[tool_spec]) {
         Ok((pkgx_env, installations)) => {
             for (key, value) in pkgx_env {
                 cmd_env.insert(key, value);
@@ -437,149 +372,6 @@ fn cleanup_installation(path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn resolve_package_with_libpkgx(
-    dependencies: &[String],
-) -> Result<(HashMap<String, String>, Vec<libpkgx::types::Installation>)> {
-    let rt = tokio::runtime::Runtime::new()
-        .context("Failed to create Tokio runtime for libpkgx operations")?;
-
-    rt.block_on(async { resolve_dependencies_async(dependencies).await })
-}
-
-async fn resolve_dependencies_async(
-    dependencies: &[String],
-) -> Result<(HashMap<String, String>, Vec<libpkgx::types::Installation>)> {
-    use libpkgx::{
-        config::Config, hydrate, install_multi::ProgressBarExt, pantry_db, resolve, sync,
-        types::PackageReq,
-    };
-    use std::collections::HashMap;
-    use std::sync::Arc;
-
-    struct ToolProgressBar {
-        bar: indicatif::ProgressBar,
-    }
-
-    impl ToolProgressBar {
-        fn new() -> Self {
-            let bar = indicatif::ProgressBar::new(0);
-            bar.set_style(
-                indicatif::ProgressStyle::with_template(
-                    "{elapsed:.dim} ❲{wide_bar:.cyan/blue}❳ {percent}% {bytes_per_sec:.dim} {bytes:.dim}"
-                ).unwrap()
-                .progress_chars("██░")
-            );
-            Self { bar }
-        }
-    }
-
-    impl ProgressBarExt for ToolProgressBar {
-        fn inc(&self, n: u64) {
-            self.bar.inc(n);
-        }
-
-        fn inc_length(&self, n: u64) {
-            self.bar.inc_length(n);
-        }
-    }
-
-    let config = Config::new().context("Failed to initialize libpkgx config")?;
-
-    std::fs::create_dir_all(config.pantry_db_file.parent().unwrap())?;
-    let mut conn = rusqlite::Connection::open(&config.pantry_db_file)?;
-
-    if sync::should(&config).map_err(|e| anyhow::anyhow!("{}", e))? {
-        info!("Syncing pkgx pantry database...");
-        sync::ensure(&config, &mut conn)
-            .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
-    }
-
-    let mut resolved_env = HashMap::new();
-    let mut package_reqs = Vec::new();
-    for dep in dependencies {
-        match PackageReq::parse(dep) {
-            Ok(req) => package_reqs.push(req),
-            Err(e) => {
-                eprintln!("Warning: Failed to parse dependency {}: {}", dep, e);
-                continue;
-            }
-        }
-    }
-
-    if package_reqs.is_empty() {
-        return Ok((resolved_env, Vec::new()));
-    }
-
-    let hydrated_packages = hydrate::hydrate(&package_reqs, |project| {
-        pantry_db::deps_for_project(&project, &conn)
-    })
-    .await
-    .map_err(|e| anyhow::anyhow!("Failed to hydrate dependencies: {}", e))?;
-
-    let resolution = resolve::resolve(&hydrated_packages, &config)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to resolve packages: {}", e))?;
-
-    let mut installations = resolution.installed;
-    if !resolution.pending.is_empty() {
-        info!(
-            "Installing {} packages with libpkgx",
-            resolution.pending.len()
-        );
-        let progress_bar = ToolProgressBar::new();
-        let installed = libpkgx::install_multi::install_multi(
-            &resolution.pending,
-            &config,
-            Some(Arc::new(progress_bar)),
-        )
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to install packages: {}", e))?;
-        installations.extend(installed);
-    }
-
-    let env_map = libpkgx::env::map(&installations);
-    let platform_env = libpkgx::env::mix(env_map);
-    let runtime_env = libpkgx::env::mix_runtime(&platform_env, &installations, &conn)
-        .map_err(|e| anyhow::anyhow!("Failed to mix runtime environment: {}", e))?;
-
-    for (key, value) in runtime_env {
-        let cleaned_value = clean_shell_expansion(&value, &key.to_string());
-        resolved_env.insert(key.to_string(), cleaned_value);
-    }
-    debug!("{:?}", resolved_env);
-
-    info!(
-        "Successfully resolved {} packages with libpkgx",
-        dependencies.len()
-    );
-    Ok((resolved_env, installations))
-}
-
-fn clean_shell_expansion(value: &str, key: &str) -> String {
-    use regex::Regex;
-
-    // Remove ${KEY:-default} syntax and just use the value part
-    let re = Regex::new(&format!(r"\$\{{{key}:-([^}}]+)\}}")).unwrap();
-    if let Some(caps) = re.captures(value) {
-        return caps.get(1).unwrap().as_str().to_string();
-    }
-
-    // Remove ${KEY:+:${KEY}} syntax
-    let re2 = Regex::new(&format!(r"\$\{{{key}:\+:[^}}]*\}}")).unwrap();
-    let cleaned = re2.replace_all(value, "");
-
-    // Remove trailing :${KEY} references
-    let re3 = Regex::new(&format!(r":?\$\{{{key}\}}$")).unwrap();
-    let cleaned = re3.replace_all(&cleaned, "");
-
-    // Remove leading :${KEY}: references
-    let re4 = Regex::new(&format!(r"^:?\$\{{{key}\}}:?")).unwrap();
-    let cleaned = re4.replace_all(&cleaned, "");
-
-    cleaned.to_string()
-}
-
 fn execute_with_pkgx_binary(
     tool_name: &str,
     version_spec: &str,
@@ -587,13 +379,13 @@ fn execute_with_pkgx_binary(
     working_path: &Path,
     env_map: &[(String, String)],
 ) -> Result<()> {
-    let pkgx_available = check_pkgx_binary();
+    let pkgx_available = crate::utils::pkgx::check_pkgx_binary();
 
     if !pkgx_available {
         anyhow::bail!("pkgx is not available. Install pkgx from https://pkgx.sh.");
     }
 
-    let (project_name, _) = resolve_tool_to_project(tool_name, version_spec)?;
+    let (project_name, _) = crate::utils::pkgx::resolve_tool_to_project(tool_name, version_spec)?;
 
     let mut cmd = Command::new("pkgx");
 
@@ -629,16 +421,6 @@ fn execute_with_pkgx_binary(
 
     info!("Command executed successfully!");
     Ok(())
-}
-
-fn check_pkgx_binary() -> bool {
-    Command::new("pkgx")
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -683,7 +465,7 @@ mod tests {
         });
 
         // Test resolution for common tools
-        let result = map_tool_to_project("python", &conn);
+        let result = crate::utils::pkgx::map_tool_to_project("python", &conn);
         assert!(result.is_ok());
         // The result should be a valid project name (e.g., "python.org")
         let project = result.unwrap();
@@ -706,7 +488,7 @@ mod tests {
             }
         });
 
-        let result = map_tool_to_project("node", &conn);
+        let result = crate::utils::pkgx::map_tool_to_project("node", &conn);
         assert!(result.is_ok());
         let project = result.unwrap();
         assert!(!project.is_empty());
@@ -728,7 +510,7 @@ mod tests {
             }
         });
 
-        let result = map_tool_to_project("go", &conn);
+        let result = crate::utils::pkgx::map_tool_to_project("go", &conn);
         assert!(result.is_ok());
         let project = result.unwrap();
         assert!(!project.is_empty());
@@ -750,7 +532,7 @@ mod tests {
             }
         });
 
-        let result = map_tool_to_project("cargo", &conn);
+        let result = crate::utils::pkgx::map_tool_to_project("cargo", &conn);
         assert!(result.is_ok());
         let project = result.unwrap();
         assert!(!project.is_empty());
@@ -772,7 +554,7 @@ mod tests {
             }
         });
 
-        let result = map_tool_to_project("unknown-tool-xyz-not-real", &conn);
+        let result = crate::utils::pkgx::map_tool_to_project("unknown-tool-xyz-not-real", &conn);
         assert!(result.is_ok());
         // Unknown tools should fall back to the tool name itself
         let project = result.unwrap();
@@ -782,7 +564,7 @@ mod tests {
     #[test]
     fn test_resolve_tool_to_project() {
         // Test the full resolution flow including version spec
-        let result = resolve_tool_to_project("node", "latest");
+        let result = crate::utils::pkgx::resolve_tool_to_project("node", "latest");
         match &result {
             Ok(_) => {
                 let (project, spec) = result.unwrap();
@@ -801,7 +583,7 @@ mod tests {
         }
 
         // Test with version
-        let result = resolve_tool_to_project("python", "3.11");
+        let result = crate::utils::pkgx::resolve_tool_to_project("python", "3.11");
         match &result {
             Ok(_) => {
                 let (project, spec) = result.unwrap();
@@ -837,7 +619,7 @@ mod tests {
         // Test various common tools
         let tools = vec!["bash", "git", "curl", "wget", "make"];
         for tool in tools {
-            let result = map_tool_to_project(tool, &conn);
+            let result = crate::utils::pkgx::map_tool_to_project(tool, &conn);
             assert!(result.is_ok(), "Failed to query tool: {}", tool);
             let project = result.unwrap();
             assert!(!project.is_empty(), "Empty project for tool: {}", tool);
