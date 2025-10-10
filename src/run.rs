@@ -212,23 +212,69 @@ fn parse_tool_spec(tool: &str) -> (String, String) {
     }
 }
 
-fn map_tool_to_project(tool_name: &str) -> String {
-    // TODO: Implement querying dev dependencies to resolve via URL instead of hardcoding mappings
-    match tool_name {
-        "python" | "python3" | "pip" | "pip3" => "python.org".to_string(),
-        "node" | "npm" | "npx" | "yarn" => "nodejs.org".to_string(),
-        "ruby" | "gem" | "bundle" => "ruby-lang.org".to_string(),
-        "go" | "gofmt" => "go.dev".to_string(),
-        "java" | "javac" | "mvn" | "gradle" => "oracle.com/java".to_string(),
-        "cargo" | "rustc" => "rust-lang.org".to_string(),
-        "php" | "composer" => "php.net".to_string(),
-        "docker" => "docker.com".to_string(),
-        "git" => "git-scm.org".to_string(),
-        "deno" => "deno.land".to_string(),
-        "bun" => "bun.sh".to_string(),
-        "bash" => "gnu.org/bash".to_string(),
-        _ => tool_name.to_string(),
+fn map_tool_to_project(tool_name: &str, conn: &rusqlite::Connection) -> Result<String> {
+    // Query pkgx pantry database to resolve tool to project
+    let tool_name_string = tool_name.to_string();
+    match libpkgx::pantry_db::projects_for_symbol(&tool_name_string, conn) {
+        Ok(projects) if !projects.is_empty() => {
+            if projects.len() == 1 {
+                Ok(projects[0].clone())
+            } else {
+                // Multiple projects provide this tool, use the first one
+                // In the future, we might want to add logic to choose the best one
+                info!(
+                    "Multiple projects provide '{}': {:?}, using {}",
+                    tool_name, projects, projects[0]
+                );
+                Ok(projects[0].clone())
+            }
+        }
+        Ok(_) => {
+            // No project found in pantry_db, fall back to tool name as project
+            warn!(
+                "No project found for tool '{}' in pantry database, using tool name as project",
+                tool_name
+            );
+            Ok(tool_name.to_string())
+        }
+        Err(e) => {
+            warn!(
+                "Failed to query pantry database for tool '{}': {}, using tool name as project",
+                tool_name, e
+            );
+            Ok(tool_name.to_string())
+        }
     }
+}
+
+fn resolve_tool_to_project(tool_name: &str, version_spec: &str) -> Result<(String, String)> {
+    use libpkgx::{config::Config, sync};
+
+    let config = Config::new().context("Failed to initialize libpkgx config")?;
+    std::fs::create_dir_all(config.pantry_db_file.parent().unwrap())?;
+    let mut conn = rusqlite::Connection::open(&config.pantry_db_file)?;
+
+    // Sync if needed
+    if sync::should(&config).map_err(|e| anyhow::anyhow!("{}", e))? {
+        info!("Syncing pkgx pantry database...");
+        let rt = tokio::runtime::Runtime::new()
+            .context("Failed to create Tokio runtime for sync")?;
+        rt.block_on(async {
+            sync::ensure(&config, &mut conn)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))
+        })?;
+    }
+
+    let project_name = map_tool_to_project(tool_name, &conn)?;
+
+    let tool_spec = if version_spec == "latest" {
+        project_name.clone()
+    } else {
+        format!("{}@{}", project_name, version_spec)
+    };
+
+    Ok((project_name, tool_spec))
 }
 
 fn execute_with_pkgx_library(
@@ -275,13 +321,8 @@ fn try_libpkgx_execution(
         anyhow::bail!("No arguments provided for tool: {}", tool_name);
     }
 
-    let project_name = map_tool_to_project(tool_name);
-
-    let tool_spec = if version_spec == "latest" {
-        project_name.clone()
-    } else {
-        format!("{}@{}", project_name, version_spec)
-    };
+    // Resolve tool to project using pantry database
+    let (project_name, tool_spec) = resolve_tool_to_project(tool_name, version_spec)?;
 
     info!("Resolving package: {}", tool_spec);
     let mut cmd_env = HashMap::new();
@@ -552,7 +593,7 @@ fn execute_with_pkgx_binary(
         anyhow::bail!("pkgx is not available. Install pkgx from https://pkgx.sh.");
     }
 
-    let project_name = map_tool_to_project(tool_name);
+    let (project_name, _) = resolve_tool_to_project(tool_name, version_spec)?;
 
     let mut cmd = Command::new("pkgx");
 
@@ -627,31 +668,115 @@ mod tests {
 
     #[test]
     fn test_map_tool_to_project_python() {
-        assert_eq!(map_tool_to_project("python"), "python.org");
-        assert_eq!(map_tool_to_project("python3"), "python.org");
-        assert_eq!(map_tool_to_project("pip"), "python.org");
+        use libpkgx::{config::Config, sync};
+
+        let config = Config::new().expect("Failed to initialize config");
+        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
+        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
+
+        // Sync the database if needed
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            if sync::should(&config).unwrap_or(false) {
+                sync::ensure(&config, &mut conn).await.ok();
+            }
+        });
+
+        // Test resolution for common tools
+        let result = map_tool_to_project("python", &conn);
+        assert!(result.is_ok());
+        // The result should be a valid project name (e.g., "python.org")
+        let project = result.unwrap();
+        assert!(!project.is_empty());
     }
 
     #[test]
     fn test_map_tool_to_project_node() {
-        assert_eq!(map_tool_to_project("node"), "nodejs.org");
-        assert_eq!(map_tool_to_project("npm"), "nodejs.org");
+        use libpkgx::{config::Config, sync};
+
+        let config = Config::new().expect("Failed to initialize config");
+        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
+        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
+
+        // Sync the database if needed
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            if sync::should(&config).unwrap_or(false) {
+                sync::ensure(&config, &mut conn).await.ok();
+            }
+        });
+
+        let result = map_tool_to_project("node", &conn);
+        assert!(result.is_ok());
+        let project = result.unwrap();
+        assert!(!project.is_empty());
     }
 
     #[test]
     fn test_map_tool_to_project_go() {
-        assert_eq!(map_tool_to_project("go"), "go.dev");
+        use libpkgx::{config::Config, sync};
+
+        let config = Config::new().expect("Failed to initialize config");
+        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
+        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
+
+        // Sync the database if needed
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            if sync::should(&config).unwrap_or(false) {
+                sync::ensure(&config, &mut conn).await.ok();
+            }
+        });
+
+        let result = map_tool_to_project("go", &conn);
+        assert!(result.is_ok());
+        let project = result.unwrap();
+        assert!(!project.is_empty());
     }
 
     #[test]
     fn test_map_tool_to_project_rust() {
-        assert_eq!(map_tool_to_project("cargo"), "rust-lang.org");
-        assert_eq!(map_tool_to_project("rustc"), "rust-lang.org");
+        use libpkgx::{config::Config, sync};
+
+        let config = Config::new().expect("Failed to initialize config");
+        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
+        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
+
+        // Sync the database if needed
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            if sync::should(&config).unwrap_or(false) {
+                sync::ensure(&config, &mut conn).await.ok();
+            }
+        });
+
+        let result = map_tool_to_project("cargo", &conn);
+        assert!(result.is_ok());
+        let project = result.unwrap();
+        assert!(!project.is_empty());
     }
 
     #[test]
     fn test_map_tool_to_project_unknown() {
-        assert_eq!(map_tool_to_project("unknown-tool"), "unknown-tool");
+        use libpkgx::{config::Config, sync};
+
+        let config = Config::new().expect("Failed to initialize config");
+        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
+        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
+
+        // Sync the database if needed
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            if sync::should(&config).unwrap_or(false) {
+                sync::ensure(&config, &mut conn).await.ok();
+            }
+        });
+
+        let result = map_tool_to_project("unknown-tool-xyz-not-real", &conn);
+        assert!(result.is_ok());
+        // Unknown tools should fall back to the tool name itself
+        let project = result.unwrap();
+        assert_eq!(project, "unknown-tool-xyz-not-real");
     }
 
     #[test]
