@@ -6,7 +6,10 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use crate::utils::command::{elevate_prompt, is_elevated};
+const PKGX_BIN_PATHS: [&str; 2] = ["/usr/local/bin/pkgx", "/usr/local/bin/pkgm"];
+#[cfg(target_os = "macos")]
+const PKGX_MACOS_DATA_PATHS: [&str; 2] =
+    ["Library/Caches/pkgx", "Library/Application Support/pkgx"];
 
 pub struct RunConfig<'a> {
     pub tool: &'a str,
@@ -19,35 +22,18 @@ pub struct RunConfig<'a> {
 
 fn uninstall_pkgx() -> Result<()> {
     info!("Uninstalling pkgx and removing all associated files...");
-
-    // Acquire lock to prevent concurrent deletions
-    let _lock = crate::utils::locking::acquire_lock()
-        .context("Failed to acquire lock for pkgx uninstallation")?;
-
     let items_to_delete = collect_pkgx_paths()?;
-
     if items_to_delete.is_empty() {
         info!("No pkgx installation found to remove");
         return Ok(());
     }
 
     info!("Found {} pkgx items to remove", items_to_delete.len());
-    let mut removed_count = 0;
     let mut failed_items = Vec::new();
 
-    for (path, is_binary) in items_to_delete {
+    for path in items_to_delete {
         if !path.exists() {
             continue;
-        }
-
-        // Request elevated permissions for binary files if needed
-        if is_binary && !is_elevated() {
-            info!("Sudo permissions required to remove file");
-            if let Err(e) = elevate_prompt() {
-                warn!("Failed to get elevated permissions: {}", e);
-                failed_items.push((path.display().to_string(), "Permission denied".to_string()));
-                continue;
-            }
         }
 
         let result = if path.is_dir() {
@@ -58,8 +44,7 @@ fn uninstall_pkgx() -> Result<()> {
 
         match result {
             Ok(()) => {
-                info!("Removed: {}", path.display());
-                removed_count += 1;
+                debug!("Removed: {}", path.display());
             }
             Err(e) => {
                 let error_msg = format!("{}", e);
@@ -69,8 +54,6 @@ fn uninstall_pkgx() -> Result<()> {
         }
     }
 
-    info!("Successfully removed: {} items", removed_count);
-
     if !failed_items.is_empty() {
         warn!("Failed to remove {} items:", failed_items.len());
         for (path, error) in failed_items {
@@ -78,35 +61,26 @@ fn uninstall_pkgx() -> Result<()> {
         }
     }
 
-    if removed_count > 0 {
-        info!("pkgx uninstallation completed!");
-    }
-
     Ok(())
 }
 
 /// Collect all pkgx-related paths to delete based on the operating system
-fn collect_pkgx_paths() -> Result<Vec<(PathBuf, bool)>> {
-    let mut paths = Vec::new();
-
-    let bin_paths = vec!["/usr/local/bin/pkgx", "/usr/local/bin/pkgm"];
-    for bin_path in bin_paths {
-        paths.push((PathBuf::from(bin_path), true));
+fn collect_pkgx_paths() -> Result<Vec<PathBuf>> {
+    let mut paths: Vec<PathBuf> = Vec::new();
+    for bin_path in PKGX_BIN_PATHS {
+        paths.push(PathBuf::from(bin_path));
     }
 
     if let Some(home_dir) = dirs_next::home_dir() {
-        paths.push((home_dir.join(".pkgx"), false));
+        paths.push(home_dir.join(".pkgx"));
     }
 
     let platform_paths = get_platform_specific_paths()?;
     for path in platform_paths {
-        paths.push((path, false));
+        paths.push(path);
     }
 
-    let existing_paths: Vec<(PathBuf, bool)> = paths
-        .into_iter()
-        .filter(|(path, _)| path.exists())
-        .collect();
+    let existing_paths: Vec<PathBuf> = paths.into_iter().filter(|path| path.exists()).collect();
 
     Ok(existing_paths)
 }
@@ -117,8 +91,9 @@ fn get_platform_specific_paths() -> Result<Vec<PathBuf>> {
     if let Some(home_dir) = dirs_next::home_dir() {
         #[cfg(target_os = "macos")]
         {
-            paths.push(home_dir.join("Library/Caches/pkgx"));
-            paths.push(home_dir.join("Library/Application Support/pkgx"));
+            for path in PKGX_MACOS_DATA_PATHS {
+                paths.push(home_dir.join(path));
+            }
         }
 
         #[cfg(not(target_os = "macos"))]
@@ -143,6 +118,7 @@ fn get_platform_specific_paths() -> Result<Vec<PathBuf>> {
 }
 
 pub fn execute(input: &RunConfig) -> Result<()> {
+    let _lock = crate::utils::locking::acquire_lock().context("Failed to acquire lock")?;
     // TODO: Locking does not work correctly. Disabled for now.
     // let _lock = {
     //     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(300); // 5 minutes
@@ -237,6 +213,7 @@ fn parse_tool_spec(tool: &str) -> (String, String) {
 }
 
 fn map_tool_to_project(tool_name: &str) -> String {
+    // TODO: Implement querying dev dependencies to resolve via URL instead of hardcoding mappings
     match tool_name {
         "python" | "python3" | "pip" | "pip3" => "python.org".to_string(),
         "node" | "npm" | "npx" | "yarn" => "nodejs.org".to_string(),
@@ -307,9 +284,7 @@ fn try_libpkgx_execution(
     };
 
     info!("Resolving package: {}", tool_spec);
-
     let mut cmd_env = HashMap::new();
-
     for (key, value) in env::vars() {
         // Overwrite Go environment variables that might be set by Mise or other shellenv tools
         if tool_name == "go" && (key == "GOROOT" || key == "GOPATH") {
@@ -363,12 +338,9 @@ fn try_libpkgx_execution(
             }
 
             info!("Resolved package with libpkgx");
-
             let mut cmd = Command::new(tool_name);
             cmd.args(args);
-
             cmd.current_dir(working_path);
-
             cmd.env_clear();
             for (key, value) in &cmd_env {
                 cmd.env(key, value);
@@ -511,7 +483,7 @@ async fn resolve_dependencies_async(
     let mut installations = resolution.installed;
     if !resolution.pending.is_empty() {
         info!(
-            "Installing {} packages with libpkgx...",
+            "Installing {} packages with libpkgx",
             resolution.pending.len()
         );
         let progress_bar = ToolProgressBar::new();
@@ -689,8 +661,7 @@ mod tests {
         assert!(paths.is_ok());
 
         let paths = paths.unwrap();
-        let path_strings: Vec<String> =
-            paths.iter().map(|(p, _)| p.display().to_string()).collect();
+        let path_strings: Vec<String> = paths.iter().map(|p| p.display().to_string()).collect();
 
         let _has_bin_paths = path_strings
             .iter()

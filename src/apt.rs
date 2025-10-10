@@ -1,11 +1,13 @@
+use crate::apt_get;
 use crate::utils::{command, linux_info};
 use anyhow::{Context, Result};
 use log::{info, warn};
 use std::fs;
 use std::path::Path;
 
-/// Install packages using apt with cleanup
-/// This is similar to apt-get but uses 'apt' command which is more user-friendly
+const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
+
+/// Install packages using apt
 pub fn install(
     packages: &[String],
     ppas: Option<&[String]>,
@@ -27,103 +29,85 @@ pub fn install(
     let temp_dir = tempfile::tempdir().context("Failed to create temp directory")?;
     let cache_backup = temp_dir.path().join("lists");
 
-    // Backup apt lists
-    const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
     if Path::new(APT_LISTS_DIR).exists() {
-        command::execute(&format!(
-            "cp -p -R {} {}",
-            APT_LISTS_DIR,
-            cache_backup.display()
-        ))?;
+        command::CommandExecutor::new()
+            .command("cp")
+            .arg("-p")
+            .arg("-R")
+            .arg(APT_LISTS_DIR)
+            .arg(cache_backup.to_str().unwrap())
+            .execute_privileged()
+            .context("Failed to copy apt lists cache")?;
     }
 
     install_with_cleanup(packages, &ppas, &cache_backup)
 }
 
 fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Path) -> Result<()> {
-    // Update package lists
-    command::execute("apt update -y")?;
+    command::CommandExecutor::new()
+        .command("apt")
+        .arg("update")
+        .arg("-y")
+        .execute_privileged()
+        .context("Failed to update apt repositories")?;
 
     let mut installed_ppas = Vec::new();
     let mut installed_ppa_packages = Vec::new();
 
-    // Add PPAs if specified
     if !ppas.is_empty() {
-        let (ppas_added, ppa_pkgs) = add_ppas(ppas)?;
-        installed_ppas = ppas_added;
-        installed_ppa_packages = ppa_pkgs;
+        let (ppas_added, ppa_pkgs) = apt_get::add_ppas(ppas)?;
+        installed_ppas.extend(ppas_added);
+        installed_ppa_packages.extend(ppa_pkgs);
     }
 
-    // Install packages
-    let pkg_list = packages.join(" ");
-    command::execute(&format!(
-        "apt install -y --no-install-recommends {}",
-        pkg_list
-    ))?;
+    let pkgs = packages.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
 
-    // Cleanup: remove PPAs
+    command::CommandExecutor::new()
+        .command("apt")
+        .arg("install")
+        .arg("-y")
+        .arg("--no-install-recommends")
+        .args(&pkgs)
+        .execute_privileged()
+        .context("Failed to install apt packages")?;
+
     for ppa in &installed_ppas {
-        let _ = command::execute(&format!("add-apt-repository -y --remove {}", ppa));
+        command::CommandExecutor::new()
+            .command("add-apt-repository")
+            .arg("-y")
+            .arg("--remove")
+            .arg(ppa)
+            .execute_privileged()
+            .context("Failed to remove PPA")?;
     }
 
-    // Cleanup: purge PPA support packages
     for pkg in &installed_ppa_packages {
-        let _ = command::execute(&format!("apt -y purge {} --auto-remove", pkg));
+        command::CommandExecutor::new()
+            .command("apt")
+            .arg("-y")
+            .arg("purge")
+            .arg(pkg)
+            .arg("--auto-remove")
+            .execute_privileged()?;
     }
 
-    // Cleanup: remove package cache
-    command::execute("apt clean")?;
-    
-    // Cleanup: restore lists cache
-    command::execute(&format!("rm -rf {}", "/var/lib/apt/lists"))?;
+    command::CommandExecutor::new()
+        .command("apt-get")
+        .arg("clean")
+        .execute_privileged()
+        .context("Failed to clean apt cache")?;
+
+    command::CommandExecutor::new()
+        .command("rm")
+        .arg("-rf")
+        .arg(APT_LISTS_DIR)
+        .execute_privileged()
+        .context("Failed to remove apt lists cache")?;
     if cache_backup.exists() {
-        fs::rename(cache_backup, "/var/lib/apt/lists")
-            .context("Failed to restore apt lists cache")?;
+        fs::rename(cache_backup, APT_LISTS_DIR).context("Failed to restore apt lists cache")?;
     }
 
     Ok(())
-}
-
-fn add_ppas(ppas: &[String]) -> Result<(Vec<String>, Vec<String>)> {
-    const PPA_SUPPORT_PACKAGES: &[&str] = &["software-properties-common"];
-    const PPA_SUPPORT_PACKAGES_DEBIAN: &[&str] = &["python3-launchpadlib"];
-
-    let mut installed_packages = Vec::new();
-    let mut added_ppas = Vec::new();
-
-    // Check if we're on Debian
-    let is_debian = match linux_info::detect_distro() {
-        Ok(distro) => matches!(distro, linux_info::LinuxDistro::Debian),
-        Err(_) => false,
-    };
-
-    // Install support packages
-    let support_pkgs = if is_debian {
-        [PPA_SUPPORT_PACKAGES, PPA_SUPPORT_PACKAGES_DEBIAN].concat()
-    } else {
-        PPA_SUPPORT_PACKAGES.to_vec()
-    };
-
-    for pkg in &support_pkgs {
-        if command::execute_status(&format!("dpkg -l {} 2>/dev/null", pkg))? != 0 {
-            command::execute(&format!("apt-get install -y --no-install-recommends {}", pkg))?;
-            installed_packages.push(pkg.to_string());
-        }
-    }
-
-    // Add each PPA
-    for ppa in ppas {
-        info!("Adding PPA: {}", ppa);
-        command::execute(&format!("add-apt-repository -y {}", ppa))?;
-        added_ppas.push(ppa.clone());
-    }
-
-    // Update after adding PPAs
-    if !added_ppas.is_empty() {
-        command::execute("apt update -y")?;
-    }
-
-    Ok((added_ppas, installed_packages))
 }
 
 #[cfg(test)]
@@ -132,18 +116,7 @@ mod tests {
 
     #[test]
     fn test_install_function_signature() {
-        // Test that the function signature is correct
         let packages = vec!["curl".to_string()];
-        // Just test compilation, not actual execution
         let _ = install(&packages, None, false);
-    }
-
-    #[test]
-    fn test_add_ppas_requires_packages() {
-        // This should not panic with empty input
-        let result = add_ppas(&[]);
-        assert!(result.is_ok());
-        let (ppas, _packages) = result.unwrap();
-        assert_eq!(ppas.len(), 0);
     }
 }

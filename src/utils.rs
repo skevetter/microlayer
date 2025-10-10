@@ -8,7 +8,9 @@ mod tests {
     #[test]
     fn test_command_module_exists() {
         use super::command;
-        let _ = command::execute_status("true");
+        let _ = command::CommandBuilder::new("echo")
+            .arg("test")
+            .execute_status();
     }
 
     #[test]

@@ -6,6 +6,8 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+const ORDERED_BASE_USERS: &[&str] = &["vscode", "node", "codespace"];
+
 /// OCI reference parser
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParsedOciRef {
@@ -55,30 +57,32 @@ struct OciLayer {
 /// Parse OCI reference string
 pub fn parse_oci_ref(oci_input: &str) -> Result<ParsedOciRef> {
     let oci_input = oci_input.replace("http://", "").replace("https://", "");
-    
-    // Find version separator
+
     let index_of_last_colon = oci_input.rfind(':');
     let (resource, version) = if let Some(idx) = index_of_last_colon {
         if idx < oci_input.find('/').unwrap_or(usize::MAX) {
             (oci_input.clone(), "latest".to_string())
         } else {
-            (oci_input[..idx].to_string(), oci_input[idx + 1..].to_string())
+            (
+                oci_input[..idx].to_string(),
+                oci_input[idx + 1..].to_string(),
+            )
         }
     } else {
         (oci_input.clone(), "latest".to_string())
     };
-    
+
     let parts: Vec<&str> = resource.split('/').collect();
     if parts.len() < 2 {
         anyhow::bail!("Invalid OCI reference format: {}", oci_input);
     }
-    
+
     let id = parts.last().unwrap().to_string();
     let registry = parts[0].to_string();
     let owner = parts[1].to_string();
-    let namespace = parts[1..parts.len()-1].join("/");
+    let namespace = parts[1..parts.len() - 1].join("/");
     let path = format!("{}/{}", namespace, id);
-    
+
     Ok(ParsedOciRef {
         id,
         version,
@@ -96,9 +100,9 @@ fn get_manifest(parsed_ref: &ParsedOciRef) -> Result<OciManifest> {
         "https://{}/v2/{}/manifests/{}",
         parsed_ref.registry, parsed_ref.path, parsed_ref.version
     );
-    
+
     debug!("Fetching manifest from: {}", url);
-    
+
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(&url)
@@ -106,148 +110,122 @@ fn get_manifest(parsed_ref: &ParsedOciRef) -> Result<OciManifest> {
         .header("User-Agent", "picolayer")
         .send()
         .context("Failed to fetch OCI manifest")?;
-    
+
     if !response.status().is_success() {
         anyhow::bail!("Failed to fetch manifest: HTTP {}", response.status());
     }
-    
-    let manifest: OciManifest = response.json()
-        .context("Failed to parse manifest JSON")?;
-    
+
+    let manifest: OciManifest = response.json().context("Failed to parse manifest JSON")?;
+
     Ok(manifest)
 }
 
 /// Download and extract OCI layer
 fn download_and_extract_layer(parsed_ref: &ParsedOciRef, output_dir: &Path) -> Result<()> {
     let manifest = get_manifest(parsed_ref)?;
-    
+
     if manifest.layers.is_empty() {
         anyhow::bail!("Feature OCI manifest has no layers");
     }
-    
+
     let layer = &manifest.layers[0];
     let blob_url = format!(
         "https://{}/v2/{}/blobs/{}",
         parsed_ref.registry, parsed_ref.path, layer.digest
     );
-    
+
     debug!("Downloading layer from: {}", blob_url);
-    
+
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(&blob_url)
         .header("User-Agent", "picolayer")
         .send()
         .context("Failed to download layer blob")?;
-    
+
     if !response.status().is_success() {
         anyhow::bail!("Failed to download blob: HTTP {}", response.status());
     }
-    
-    let blob_data = response.bytes()
-        .context("Failed to read blob data")?;
-    
-    // Extract tar.gz to output directory
+
+    let blob_data = response.bytes().context("Failed to read blob data")?;
+
     let decoder = flate2::read::GzDecoder::new(&blob_data[..]);
     let mut archive = tar::Archive::new(decoder);
-    archive.unpack(output_dir)
+    archive
+        .unpack(output_dir)
         .context("Failed to extract layer archive")?;
-    
+
     Ok(())
 }
 
-/// Resolve remote user for feature installation
 fn resolve_remote_user(remote_user: Option<&str>) -> Result<(String, String)> {
-    const ORDERED_BASE_USERS: &[&str] = &["vscode", "node", "codespace"];
-    
-    // Try specified user first
-    if let Some(user) = remote_user {
-        if let Ok(output) = Command::new("id")
-            .arg("-u")
-            .arg(user)
-            .output()
-        {
-            if output.status.success() {
-                if let Ok(home) = std::env::var(format!("HOME")) {
-                    return Ok((user.to_string(), home));
-                }
-                // Try to get home directory for user
-                if let Ok(output) = Command::new("sh")
-                    .arg("-c")
-                    .arg(format!("eval echo ~{}", user))
-                    .output()
-                {
-                    if output.status.success() {
-                        let home = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                        return Ok((user.to_string(), home));
-                    }
-                }
-            }
+    if let Some(user) = remote_user
+        && let Ok(output) = Command::new("id").arg("-u").arg(user).output()
+        && output.status.success()
+    {
+        if let Ok(home) = std::env::var("HOME") {
+            return Ok((user.to_string(), home));
         }
+        if let Ok(output) = Command::new("sh")
+            .arg("-c")
+            .arg(format!("eval echo ~{}", user))
+            .output()
+            && output.status.success()
+        {
+            let home = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            return Ok((user.to_string(), home));
+        }
+
         warn!("User '{}' not found, attempting fallback", user);
     }
-    
-    // Try ordered base users
+
     for user in ORDERED_BASE_USERS {
-        if let Ok(output) = Command::new("id")
-            .arg("-u")
-            .arg(user)
-            .output()
-        {
-            if output.status.success() {
-                if let Ok(output) = Command::new("sh")
-                    .arg("-c")
-                    .arg(format!("eval echo ~{}", user))
-                    .output()
-                {
-                    if output.status.success() {
-                        let home = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                        return Ok((user.to_string(), home));
-                    }
-                }
-            }
-        }
-    }
-    
-    // Fallback to user 1000
-    if let Ok(output) = Command::new("id")
-        .arg("-un")
-        .arg("1000")
-        .output()
-    {
-        if output.status.success() {
-            let user = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if let Ok(output) = Command::new("sh")
+        if let Ok(output) = Command::new("id").arg("-u").arg(user).output()
+            && output.status.success()
+            && let Ok(output) = Command::new("sh")
                 .arg("-c")
                 .arg(format!("eval echo ~{}", user))
                 .output()
-            {
-                if output.status.success() {
-                    let home = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                    return Ok((user, home));
-                }
-            }
+            && output.status.success()
+        {
+            let home = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            return Ok((user.to_string(), home));
         }
     }
-    
-    // Last resort: root
+
+    // Fallback to user 1000
+    if let Ok(output) = Command::new("id").arg("-un").arg("1000").output()
+        && output.status.success()
+    {
+        let user = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if let Ok(output) = Command::new("sh")
+            .arg("-c")
+            .arg(format!("eval echo ~{}", user))
+            .output()
+            && output.status.success()
+        {
+            let home = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            return Ok((user, home));
+        }
+    }
+
     Ok(("root".to_string(), "/root".to_string()))
 }
 
 /// Load feature metadata from directory
 fn load_feature_metadata(feature_dir: &Path) -> Result<Feature> {
     let metadata_path = feature_dir.join("devcontainer-feature.json");
-    
+
     if !metadata_path.exists() {
         anyhow::bail!("Feature metadata file not found: devcontainer-feature.json");
     }
-    
-    let metadata_content = fs::read_to_string(&metadata_path)
-        .context("Failed to read feature metadata")?;
-    
-    let feature: Feature = serde_json::from_str(&metadata_content)
-        .context("Failed to parse feature metadata")?;
-    
+
+    let metadata_content =
+        fs::read_to_string(&metadata_path).context("Failed to read feature metadata")?;
+
+    let feature: Feature =
+        serde_json::from_str(&metadata_content).context("Failed to parse feature metadata")?;
+
     Ok(feature)
 }
 
@@ -257,45 +235,44 @@ fn resolve_options(
     provided_options: Option<HashMap<String, String>>,
 ) -> HashMap<String, String> {
     let mut resolved = provided_options.unwrap_or_default();
-    
+
     if let Some(option_defs) = &feature.options {
         for (name, option) in option_defs {
-            if !resolved.contains_key(name) {
-                if let Some(default) = &option.default {
-                    let default_str = match default {
-                        serde_json::Value::String(s) => s.clone(),
-                        serde_json::Value::Bool(b) => if *b { "true" } else { "false" }.to_string(),
-                        serde_json::Value::Number(n) => n.to_string(),
-                        _ => String::new(),
-                    };
-                    resolved.insert(name.clone(), default_str);
-                }
+            if !resolved.contains_key(name)
+                && let Some(default) = &option.default
+            {
+                let default_str = match default {
+                    serde_json::Value::String(s) => s.clone(),
+                    serde_json::Value::Bool(b) => if *b { "true" } else { "false" }.to_string(),
+                    serde_json::Value::Number(n) => n.to_string(),
+                    _ => String::new(),
+                };
+                resolved.insert(name.clone(), default_str);
             }
         }
     }
-    
+
     resolved
 }
 
 /// Set environment variables in profile
 fn set_container_env(feature: &Feature) -> Result<()> {
     const PROFILE_DIR: &str = "/etc/profile.d";
-    
+
     if feature.container_env.is_none() {
         return Ok(());
     }
-    
+
     let profile_dir = Path::new(PROFILE_DIR);
-    fs::create_dir_all(profile_dir)
-        .context("Failed to create profile directory")?;
-    
+    fs::create_dir_all(profile_dir).context("Failed to create profile directory")?;
+
     let profile_file = profile_dir.join(format!("picolayer-{}.sh", feature.id));
-    
+
     let mut content = String::new();
     if profile_file.exists() {
         content = fs::read_to_string(&profile_file)?;
     }
-    
+
     if let Some(container_env) = &feature.container_env {
         for (key, value) in container_env {
             let statement = format!("export {}={}\n", key, value);
@@ -304,10 +281,9 @@ fn set_container_env(feature: &Feature) -> Result<()> {
             }
         }
     }
-    
-    fs::write(&profile_file, content)
-        .context("Failed to write profile file")?;
-    
+
+    fs::write(&profile_file, content).context("Failed to write profile file")?;
+
     Ok(())
 }
 
@@ -319,53 +295,50 @@ pub fn install(
     envs: Option<HashMap<String, String>>,
 ) -> Result<()> {
     info!("Installing devcontainer feature: {}", feature_ref);
-    
-    // Check for root privileges
-    if !crate::utils::command::is_elevated() {
+
+    if !crate::utils::command::CommandExecutor::new().is_elevated() {
         anyhow::bail!("Devcontainer feature installation requires root privileges. Use sudo.");
     }
-    
+
     let parsed_ref = parse_oci_ref(feature_ref)?;
     debug!("Parsed OCI ref: {:?}", parsed_ref);
-    
-    // Create temporary directory for feature extraction
-    let temp_dir = tempfile::tempdir()
-        .context("Failed to create temporary directory")?;
-    
+
+    let temp_dir = tempfile::tempdir().context("Failed to create temporary directory")?;
+
     info!("Downloading and extracting feature...");
     download_and_extract_layer(&parsed_ref, temp_dir.path())?;
-    
-    // Load feature metadata
+
     let feature = load_feature_metadata(temp_dir.path())?;
-    info!("Feature: {} v{}", feature.id, feature.version.as_deref().unwrap_or("unknown"));
-    
-    // Resolve remote user
+    info!(
+        "Feature: {} v{}",
+        feature.id,
+        feature.version.as_deref().unwrap_or("unknown")
+    );
+
     let (remote_user_name, remote_user_home) = resolve_remote_user(remote_user)?;
-    info!("Installing for user: {} (home: {})", remote_user_name, remote_user_home);
-    
-    // Resolve options
+    info!(
+        "Installing for user: {} (home: {})",
+        remote_user_name, remote_user_home
+    );
+
     let resolved_options = resolve_options(&feature, options);
     debug!("Resolved options: {:?}", resolved_options);
-    
-    // Build environment variables
+
     let mut env_vars = envs.unwrap_or_default();
     env_vars.insert("_REMOTE_USER".to_string(), remote_user_name.clone());
     env_vars.insert("_REMOTE_USER_HOME".to_string(), remote_user_home.clone());
-    
-    // Add options as environment variables (uppercase)
+
     for (key, value) in resolved_options {
         env_vars.insert(key.to_uppercase(), value);
     }
-    
-    // Execute install.sh
+
     let install_script = temp_dir.path().join("install.sh");
     if !install_script.exists() {
         anyhow::bail!("Feature install.sh script not found");
     }
-    
+
     info!("Executing feature installation script...");
-    
-    // Make script executable
+
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -373,44 +346,42 @@ pub fn install(
         perms.set_mode(0o755);
         fs::set_permissions(&install_script, perms)?;
     }
-    
-    // Build environment string
+
     let env_string: Vec<String> = env_vars
         .iter()
         .map(|(k, v)| format!("{}=\"{}\"", k, v.replace("\"", "\\\"")))
         .collect();
-    
+
     let env_prefix = env_string.join(" ");
-    
-    // Execute with bash
     let command = format!(
         "cd {} && {} bash -i +H -x ./install.sh",
         temp_dir.path().display(),
         env_prefix
     );
-    
+
     debug!("Executing: {}", command);
-    
+
     let output = Command::new("sh")
         .arg("-c")
         .arg(&command)
         .output()
         .context("Failed to execute install script")?;
-    
+
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
         warn!("Script output:\n{}", stdout);
         warn!("Script errors:\n{}", stderr);
-        anyhow::bail!("Feature installation script failed with exit code: {:?}", output.status.code());
+        anyhow::bail!(
+            "Feature installation script failed with exit code: {:?}",
+            output.status.code()
+        );
     }
-    
+
     info!("Feature installation script completed successfully");
-    
-    // Set container environment variables
+
     set_container_env(&feature)?;
-    
-    // Execute entrypoint if specified
+
     if let Some(entrypoint) = &feature.entrypoint {
         info!("Executing feature entrypoint: {}", entrypoint);
         let output = Command::new("sh")
@@ -418,12 +389,15 @@ pub fn install(
             .arg(entrypoint)
             .output()
             .context("Failed to execute entrypoint")?;
-        
+
         if !output.status.success() {
-            warn!("Entrypoint failed but continuing: {:?}", output.status.code());
+            warn!(
+                "Entrypoint failed but continuing: {:?}",
+                output.status.code()
+            );
         }
     }
-    
+
     info!("Devcontainer feature installation completed successfully");
     Ok(())
 }
@@ -479,7 +453,7 @@ mod tests {
                 description: None,
             },
         );
-        
+
         let feature = Feature {
             id: "test".to_string(),
             version: Some("1.0".to_string()),
@@ -489,7 +463,7 @@ mod tests {
             container_env: None,
             entrypoint: None,
         };
-        
+
         let resolved = resolve_options(&feature, None);
         assert_eq!(resolved.get("version"), Some(&"18".to_string()));
     }
@@ -505,7 +479,7 @@ mod tests {
                 description: None,
             },
         );
-        
+
         let feature = Feature {
             id: "test".to_string(),
             version: Some("1.0".to_string()),
@@ -515,10 +489,10 @@ mod tests {
             container_env: None,
             entrypoint: None,
         };
-        
+
         let mut provided = HashMap::new();
         provided.insert("version".to_string(), "20".to_string());
-        
+
         let resolved = resolve_options(&feature, Some(provided));
         assert_eq!(resolved.get("version"), Some(&"20".to_string()));
     }
