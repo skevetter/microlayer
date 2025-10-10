@@ -780,6 +780,71 @@ mod tests {
     }
 
     #[test]
+    fn test_resolve_tool_to_project() {
+        // Test the full resolution flow including version spec
+        let result = resolve_tool_to_project("node", "latest");
+        match &result {
+            Ok(_) => {
+                let (project, spec) = result.unwrap();
+                assert!(!project.is_empty());
+                assert_eq!(spec, project); // "latest" should just return the project name
+            }
+            Err(e) => {
+                // If sync fails (e.g., network issue, 403 error), skip the test
+                eprintln!("Skipping test due to sync error: {}", e);
+                if e.to_string().contains("403 Forbidden") || e.to_string().contains("HTTP") {
+                    // This is expected in CI/testing environments with rate limiting
+                    return;
+                }
+                panic!("Unexpected error: {}", e);
+            }
+        }
+
+        // Test with version
+        let result = resolve_tool_to_project("python", "3.11");
+        match &result {
+            Ok(_) => {
+                let (project, spec) = result.unwrap();
+                assert!(!project.is_empty());
+                assert!(spec.contains("@3.11"));
+            }
+            Err(e) => {
+                eprintln!("Skipping test due to sync error: {}", e);
+                if e.to_string().contains("403 Forbidden") || e.to_string().contains("HTTP") {
+                    return;
+                }
+                panic!("Unexpected error: {}", e);
+            }
+        }
+    }
+
+    #[test]
+    fn test_query_various_tools() {
+        use libpkgx::{config::Config, sync};
+
+        let config = Config::new().expect("Failed to initialize config");
+        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
+        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
+
+        // Sync the database if needed
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            if sync::should(&config).unwrap_or(false) {
+                sync::ensure(&config, &mut conn).await.ok();
+            }
+        });
+
+        // Test various common tools
+        let tools = vec!["bash", "git", "curl", "wget", "make"];
+        for tool in tools {
+            let result = map_tool_to_project(tool, &conn);
+            assert!(result.is_ok(), "Failed to query tool: {}", tool);
+            let project = result.unwrap();
+            assert!(!project.is_empty(), "Empty project for tool: {}", tool);
+        }
+    }
+
+    #[test]
     fn test_collect_pkgx_paths() {
         let paths = collect_pkgx_paths();
 
