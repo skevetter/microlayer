@@ -1,8 +1,8 @@
 mod common;
-use picolayer::utils::command;
-
 #[cfg(target_os = "linux")]
 use common::run_picolayer;
+#[cfg(target_os = "linux")]
+use picolayer::utils::command;
 #[cfg(target_os = "linux")]
 use serial_test::serial;
 
