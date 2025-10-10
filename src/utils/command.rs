@@ -411,18 +411,15 @@ mod tests {
 
     #[test]
     fn test_elevation_manager_is_elevated() {
-        // This will return true if running tests as root, false otherwise
         let is_elevated = ElevationController::is_elevated();
         println!("Is elevated: {}", is_elevated);
-        // Just ensure it doesn't panic
         assert!(is_elevated == true || is_elevated == false);
     }
 
     #[test]
     fn test_elevation_manager_command_exists() {
-        // Test that we can detect common commands
         let ls_exists = ElevationController::command_exists("ls");
-        assert!(ls_exists); // ls should exist on Unix systems
+        assert!(ls_exists);
     }
 
     #[test]
@@ -532,7 +529,6 @@ mod tests {
 
     #[test]
     fn test_privileged_execution_detection() {
-        // Test that we can detect if privileges are needed
         let result = CommandBuilder::new("whoami")
             .output_mode(OutputMode::Capture)
             .execute_privileged();
@@ -547,7 +543,6 @@ mod tests {
                     "Privileged execution failed (expected if no elevation available): {}",
                     e
                 );
-                // This is expected if no elevation method is available
             }
         }
     }

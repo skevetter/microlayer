@@ -17,7 +17,7 @@ ignored = ["oci-client"]
 [target.'cfg(target_family = "unix")'.dependencies]
 libc = "0.2.177"
 
-[target.'cfg(os = "linux")'.dependencies]
+[target.'cfg(all(target_os = "linux", target_arch = "aarch64"))'.dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
 
 [dependencies]
