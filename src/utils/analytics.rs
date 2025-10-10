@@ -100,16 +100,16 @@ fn get_machine_id() -> Result<String> {
     use std::process::Command;
 
     let output = Command::new("ioreg")
-        .args(&["-rd1", "-c", "IOPlatformExpertDevice"])
+        .args(["-rd1", "-c", "IOPlatformExpertDevice"])
         .output()?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
 
     for line in output_str.lines() {
-        if line.contains("IOPlatformUUID") {
-            if let Some(uuid) = line.split('"').nth(3) {
-                return Ok(uuid.to_string());
-            }
+        if line.contains("IOPlatformUUID")
+            && let Some(uuid) = line.split('"').nth(3)
+        {
+            return Ok(uuid.to_string());
         }
     }
 

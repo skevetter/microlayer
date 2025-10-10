@@ -2,13 +2,6 @@ name: Build and Push Docker Image
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - CI
-    types:
-      - completed
-    branches:
-      - main
 
 env:
   REGISTRY: ghcr.io
@@ -21,7 +14,6 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request') }}
     steps:
       - uses: actions/checkout@v5
 
