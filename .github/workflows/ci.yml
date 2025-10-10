@@ -34,6 +34,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           components: rustfmt, clippy
+          targets: ${{ matrix.target }}
 
       - name: Check formatting
         run: cargo fmt -- --check
