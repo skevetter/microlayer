@@ -175,10 +175,10 @@ fn main() -> Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
     info!("Starting picolayer");
 
-    // Acquire lock at the very start of the program
-    let _lock = utils::locking::acquire_lock().context("Failed to acquire lock")?;
-
     let cli = Cli::parse();
+
+    // Acquire lock at the start of actual commands (not for help/version)
+    let _lock = utils::locking::acquire_lock().context("Failed to acquire lock")?;
 
     match cli.command {
         Commands::AptGet {
