@@ -296,10 +296,6 @@ pub fn install(
 ) -> Result<()> {
     info!("Installing devcontainer feature: {}", feature_ref);
 
-    if !crate::utils::command::CommandExecutor::new().is_elevated() {
-        anyhow::bail!("Devcontainer feature installation requires root privileges. Use sudo.");
-    }
-
     let parsed_ref = parse_oci_ref(feature_ref)?;
     debug!("Parsed OCI ref: {:?}", parsed_ref);
 

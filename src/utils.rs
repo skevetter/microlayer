@@ -1,18 +1,10 @@
 pub mod analytics;
-pub mod command;
 pub mod linux_info;
 pub mod locking;
 pub mod pkgx;
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_command_module_exists() {
-        use super::command;
-        let _ = command::CommandBuilder::new("echo")
-            .arg("test")
-            .execute_status();
-    }
 
     #[test]
     fn test_linux_info_module_exists() {

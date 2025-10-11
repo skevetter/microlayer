@@ -1,11 +1,77 @@
 use crate::apt_get;
-use crate::utils::{command, linux_info};
+use crate::utils::linux_info;
 use anyhow::{Context, Result};
 use log::{info, warn};
 use std::fs;
 use std::path::Path;
 
-const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
+struct Apt {}
+
+impl Apt {
+    const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
+
+    fn update() -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("apt").arg("update").arg("-y");
+        cmd
+    }
+
+    fn install_packages(packages: &[String]) -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("apt")
+            .arg("install")
+            .arg("-y")
+            .arg("--no-install-recommends");
+        for pkg in packages {
+            cmd.arg(pkg);
+        }
+        cmd
+    }
+
+    fn backup_apt_lists(cache_backup: &Path) -> Result<()> {
+        if Path::new(Apt::APT_LISTS_DIR).exists() {
+            std::process::Command::new("sudo ")
+                .arg("cp")
+                .arg("-p")
+                .arg("-R")
+                .arg(Apt::APT_LISTS_DIR)
+                .arg(cache_backup.to_str().unwrap())
+                .status()
+                .context("Failed to copy apt lists cache")?;
+        }
+        Ok(())
+    }
+
+    fn purge(packages: &[String]) -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("apt").arg("purge").arg("-y").arg("--auto-remove");
+        for pkg in packages {
+            cmd.arg(pkg);
+        }
+        cmd
+    }
+
+    fn rm_apt_cache() -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("rm").arg("-rf").arg(Apt::APT_LISTS_DIR);
+        cmd
+    }
+
+    fn clean() -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("apt").arg("clean");
+        cmd
+    }
+
+    fn remove_ppas(ppas: &[String]) -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("add-apt-repository").arg("-y").arg("--remove");
+        for ppa in ppas {
+            cmd.arg(ppa);
+        }
+        cmd
+    }
+}
 
 /// Install packages using apt
 pub fn install(
@@ -29,82 +95,37 @@ pub fn install(
     let temp_dir = tempfile::tempdir().context("Failed to create temp directory")?;
     let cache_backup = temp_dir.path().join("lists");
 
-    if Path::new(APT_LISTS_DIR).exists() {
-        command::CommandExecutor::new()
-            .command("cp")
-            .arg("-p")
-            .arg("-R")
-            .arg(APT_LISTS_DIR)
-            .arg(cache_backup.to_str().unwrap())
-            .execute_privileged()
-            .context("Failed to copy apt lists cache")?;
-    }
-
-    install_with_cleanup(packages, &ppas, &cache_backup)
-}
-
-fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Path) -> Result<()> {
-    command::CommandExecutor::new()
-        .command("apt")
-        .arg("update")
-        .arg("-y")
-        .execute_privileged()
+    Apt::backup_apt_lists(&cache_backup)?;
+    Apt::update()
+        .status()
         .context("Failed to update apt repositories")?;
 
     let mut installed_ppas = Vec::new();
     let mut installed_ppa_packages = Vec::new();
 
     if !ppas.is_empty() {
-        let (ppas_added, ppa_pkgs) = apt_get::add_ppas(ppas)?;
+        let (ppas_added, ppa_pkgs) = apt_get::add_ppas(&ppas)?;
         installed_ppas.extend(ppas_added);
         installed_ppa_packages.extend(ppa_pkgs);
     }
 
-    let pkgs = packages.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
-
-    command::CommandExecutor::new()
-        .command("apt")
-        .arg("install")
-        .arg("-y")
-        .arg("--no-install-recommends")
-        .args(&pkgs)
-        .execute_privileged()
+    Apt::install_packages(packages)
+        .status()
         .context("Failed to install apt packages")?;
-
-    for ppa in &installed_ppas {
-        command::CommandExecutor::new()
-            .command("add-apt-repository")
-            .arg("-y")
-            .arg("--remove")
-            .arg(ppa)
-            .execute_privileged()
-            .context("Failed to remove PPA")?;
-    }
-
-    for pkg in &installed_ppa_packages {
-        command::CommandExecutor::new()
-            .command("apt")
-            .arg("-y")
-            .arg("purge")
-            .arg(pkg)
-            .arg("--auto-remove")
-            .execute_privileged()?;
-    }
-
-    command::CommandExecutor::new()
-        .command("apt-get")
-        .arg("clean")
-        .execute_privileged()
-        .context("Failed to clean apt cache")?;
-
-    command::CommandExecutor::new()
-        .command("rm")
-        .arg("-rf")
-        .arg(APT_LISTS_DIR)
-        .execute_privileged()
+    Apt::remove_ppas(&installed_ppas)
+        .status()
+        .context("Failed to remove PPAs")?;
+    Apt::purge(installed_ppa_packages.as_slice())
+        .status()
+        .context("Failed to purge package installed for PPA support")?;
+    Apt::clean().status().context("Failed to clean apt cache")?;
+    Apt::rm_apt_cache()
+        .status()
         .context("Failed to remove apt lists cache")?;
+
     if cache_backup.exists() {
-        fs::rename(cache_backup, APT_LISTS_DIR).context("Failed to restore apt lists cache")?;
+        fs::rename(cache_backup, Apt::APT_LISTS_DIR)
+            .context("Failed to restore apt lists cache")?;
     }
 
     Ok(())

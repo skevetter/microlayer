@@ -5,8 +5,6 @@ use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
 
-use crate::utils::command;
-
 const PKGX_BIN_PATHS: [&str; 2] = ["/usr/local/bin/pkgx", "/usr/local/bin/pkgm"];
 #[cfg(target_os = "macos")]
 const PKGX_MACOS_DATA_PATHS: [&str; 2] =
@@ -119,6 +117,13 @@ fn get_platform_specific_paths() -> Result<Vec<PathBuf>> {
 }
 
 pub fn execute(input: &RunConfig) -> Result<()> {
+    // TODO: Search the install directories for pkgx and cache existing file. Picolayer should not mess
+    // with existing pkgx installs. After the run command completes, the cache should be restored.
+    // The rationale is the user may have pkgx installed before picolayer runs or wish to keep the
+    // pkgx cache present for subsequent executions. The plan is to replace the keep_package and keep_pkgx flags with
+    // a single --delete option with choices "package" or "pkgx" to uninstall only the package that was installed
+    // or the entire pkgx installation.
+
     let _lock = crate::utils::locking::acquire_lock().context("Failed to acquire lock")?;
     // TODO: Locking does not work correctly. Disabled for now.
     // let _lock = {
@@ -298,18 +303,18 @@ fn try_libpkgx_execution(
             }
 
             info!("Resolved package with libpkgx");
-            command::CommandExecutor::new()
-                .command(tool_name)
-                .args(&args.iter().map(|arg| arg.as_str()).collect::<Vec<&str>>())
-                .working_directory(working_path.to_str().context("Invalid working directory")?)
+            std::process::Command::new(tool_name)
+                .args(args.iter().map(|arg| arg.as_str()).collect::<Vec<&str>>())
+                .current_dir(working_path.to_str().context("Invalid working directory")?)
                 .envs(
-                    &cmd_env
+                    cmd_env
                         .iter()
                         .map(|(k, v)| (k.as_str(), v.as_str()))
                         .collect::<Vec<(&str, &str)>>(),
                 )
-                .output_mode(command::OutputMode::Inherit)
-                .execute_status()
+                .stdout(std::process::Stdio::inherit())
+                .stderr(std::process::Stdio::inherit())
+                .status()
                 .context("Failed to execute command with libpkgx")?;
 
             Ok(())
@@ -355,20 +360,20 @@ fn execute_with_pkgx_binary(
         format!("+{}@{}", project_name, version_spec)
     };
 
-    command::CommandExecutor::new()
-        .command("pkgx")
+    std::process::Command::new("pkgx")
         .arg(&project_arg)
         .arg(tool_name)
-        .args(&args.iter().map(|arg| arg.as_str()).collect::<Vec<&str>>())
-        .working_directory(working_path.to_str().context("Invalid working directory")?)
+        .args(args.iter().map(|arg| arg.as_str()).collect::<Vec<&str>>())
+        .current_dir(working_path.to_str().context("Invalid working directory")?)
         .envs(
-            &env_map
+            env_map
                 .iter()
                 .map(|(k, v)| (k.as_str(), v.as_str()))
                 .collect::<Vec<(&str, &str)>>(),
         )
-        .output_mode(command::OutputMode::Inherit)
-        .execute_status()
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .status()
         .context("Failed to execute command with pkgx")?;
 
     Ok(())

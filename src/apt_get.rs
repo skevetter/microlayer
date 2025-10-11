@@ -1,11 +1,120 @@
-use crate::utils::{command, linux_info};
+use crate::utils::linux_info;
 use anyhow::{Context, Result};
 use log::{info, warn};
 use std::path::Path;
 
-const PPA_SUPPORT_PACKAGES: &[&str] = &["software-properties-common"];
-const PPA_SUPPORT_PACKAGES_DEBIAN: &[&str] = &["python3-launchpadlib"];
-const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
+pub struct AptGet {}
+
+impl AptGet {
+    const PPA_SUPPORT_PACKAGES: &[&str] = &["software-properties-common"];
+    const PPA_SUPPORT_PACKAGES_DEBIAN: &[&str] = &["python3-launchpadlib"];
+    const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
+
+    fn apt_install(packages: &[String]) -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("apt-get")
+            .arg("install")
+            .arg("-y")
+            .arg("--no-install-recommends");
+        for pkg in packages {
+            cmd.arg(pkg);
+        }
+        cmd
+    }
+
+    fn apt_get() -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("apt-get");
+        cmd
+    }
+
+    fn add_apt_repository() -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("add-apt-repository");
+        cmd
+    }
+
+    fn remove_ppas(ppas: &[String]) -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("add-apt-repository").arg("-y").arg("--remove");
+        for ppa in ppas {
+            cmd.arg(ppa);
+        }
+        cmd
+    }
+
+    fn dpkg() -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("dpkg");
+        cmd
+    }
+
+    fn rm_apt_cache() -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("rm").arg("-rf").arg(AptGet::APT_LISTS_DIR);
+        cmd
+    }
+
+    fn backup_apt_lists(cache_backup: &Path) -> Result<()> {
+        if Path::new(AptGet::APT_LISTS_DIR).exists() {
+            let options = fs_extra::dir::CopyOptions::new()
+                .overwrite(true)
+                .copy_inside(true);
+            match fs_extra::dir::copy(AptGet::APT_LISTS_DIR, cache_backup, &options) {
+                Ok(_) => {}
+                Err(err) if matches!(err.kind, fs_extra::error::ErrorKind::PermissionDenied) => {
+                    std::process::Command::new("sudo")
+                        .arg("cp")
+                        .arg("-r")
+                        .arg(AptGet::APT_LISTS_DIR)
+                        .arg(cache_backup)
+                        .status()
+                        .context("Failed to backup apt lists with sudo")?;
+                }
+                Err(err) => {
+                    return Err(anyhow::anyhow!("Failed to backup apt lists: {}", err));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn restore_apt_lists(cache_backup: &Path) -> Result<()> {
+        if cache_backup.exists() {
+            let options = fs_extra::dir::CopyOptions::new()
+                .overwrite(true)
+                .copy_inside(true);
+            match fs_extra::dir::copy(cache_backup, AptGet::APT_LISTS_DIR, &options) {
+                Ok(_) => {}
+                Err(err) if matches!(err.kind, fs_extra::error::ErrorKind::PermissionDenied) => {
+                    std::process::Command::new("sudo")
+                        .arg("cp")
+                        .arg("-r")
+                        .arg(cache_backup)
+                        .arg(AptGet::APT_LISTS_DIR)
+                        .status()
+                        .context("Failed to restore apt lists with sudo")?;
+                }
+                Err(err) => {
+                    return Err(anyhow::anyhow!("Failed to restore apt lists: {}", err));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn apt_purge(packages: &[String]) -> std::process::Command {
+        let mut cmd = std::process::Command::new("sudo");
+        cmd.arg("apt-get")
+            .arg("purge")
+            .arg("-y")
+            .arg("--auto-remove");
+        for pkg in packages {
+            cmd.arg(pkg);
+        }
+        cmd
+    }
+}
 
 /// Install packages using apt-get with optional PPAs
 pub fn install(
@@ -29,87 +138,43 @@ pub fn install(
     let temp_dir = tempfile::tempdir().context("Failed to create temp directory")?;
     let cache_backup = temp_dir.path().join("lists");
 
-    if Path::new(APT_LISTS_DIR).exists() {
-        command::CommandExecutor::new()
-            .command("cp")
-            .arg("-p")
-            .arg("-R")
-            .arg(APT_LISTS_DIR)
-            .arg(cache_backup.to_str().unwrap())
-            .execute_privileged()
-            .context("Failed to copy apt lists cache")?;
-    }
-
-    install_with_cleanup(packages, &ppas, &cache_backup)
-}
-
-fn install_with_cleanup(packages: &[String], ppas: &[String], cache_backup: &Path) -> Result<()> {
-    command::CommandExecutor::new()
-        .command("apt-get")
+    AptGet::backup_apt_lists(&cache_backup)?;
+    std::process::Command::new("sudo")
+        .arg("apt-get")
         .arg("update")
         .arg("-y")
-        .execute_privileged()
+        .status()
         .context("Failed to update apt repositories")?;
 
     let mut installed_ppas = Vec::new();
     let mut installed_ppa_packages = Vec::new();
 
     if !ppas.is_empty() {
-        let (ppas_added, ppa_pkgs) = add_ppas(ppas)?;
+        let (ppas_added, ppa_pkgs) = add_ppas(&ppas)?;
         installed_ppas = ppas_added;
         installed_ppa_packages = ppa_pkgs;
     }
 
-    let pkgs: Vec<&str> = packages.iter().map(|s| s.as_str()).collect();
-
-    command::CommandExecutor::new()
-        .command("apt-get")
-        .arg("install")
-        .arg("-y")
-        .arg("--no-install-recommends")
-        .args(&pkgs)
-        .execute_privileged()
+    AptGet::apt_install(packages)
+        .status()
         .context("Failed to install apt packages")?;
-
-    for ppa in &installed_ppas {
-        command::CommandExecutor::new()
-            .command("add-apt-repository")
-            .arg("-y")
-            .arg("--remove")
-            .arg(ppa)
-            .execute_privileged()
-            .context("Failed to remove PPA")?;
-    }
-
-    for pkg in &installed_ppa_packages {
-        command::CommandExecutor::new()
-            .command("apt-get")
-            .arg("-y")
-            .arg("purge")
-            .arg(pkg)
-            .arg("--auto-remove")
-            .execute_privileged()
-            .context("Failed to purge package")?;
-    }
-
-    command::CommandExecutor::new()
-        .command("apt-get")
+    AptGet::remove_ppas(&installed_ppas)
+        .status()
+        .context("Failed to remove PPAs")?;
+    AptGet::apt_purge(installed_ppa_packages.as_slice())
+        .status()
+        .context("Failed to purge packages installed for PPA support")?;
+    AptGet::apt_get()
         .arg("clean")
-        .execute_privileged()
+        .status()
         .context("Failed to clean apt cache")?;
-    command::CommandExecutor::new()
-        .command("rm")
-        .arg("-rf")
-        .arg(APT_LISTS_DIR)
-        .execute_privileged()
+    AptGet::rm_apt_cache()
+        .arg(AptGet::APT_LISTS_DIR)
+        .status()
         .context("Failed to remove apt lists cache")?;
+
     if cache_backup.exists() {
-        fs_extra::move_items(
-            &[cache_backup],
-            APT_LISTS_DIR,
-            &fs_extra::dir::CopyOptions::new(),
-        )
-        .context("Failed to restore apt lists cache")?;
+        AptGet::restore_apt_lists(&cache_backup).context("Failed to restore apt lists")?;
     }
 
     Ok(())
@@ -131,48 +196,46 @@ pub fn add_ppas(ppas: &[String]) -> Result<(Vec<String>, Vec<String>)> {
         .collect();
 
     let required_packages: Vec<&str> = if linux_info::is_ubuntu() {
-        PPA_SUPPORT_PACKAGES.to_vec()
+        AptGet::PPA_SUPPORT_PACKAGES.to_vec()
     } else {
-        PPA_SUPPORT_PACKAGES
+        AptGet::PPA_SUPPORT_PACKAGES
             .iter()
-            .chain(PPA_SUPPORT_PACKAGES_DEBIAN.iter())
+            .chain(AptGet::PPA_SUPPORT_PACKAGES_DEBIAN.iter())
             .copied()
             .collect()
     };
 
     for pkg in required_packages {
-        let status = command::CommandBuilder::new("dpkg")
+        let status = AptGet::dpkg()
             .arg("-s")
             .arg(pkg)
-            .execution_mode(command::ExecutionMode::StatusOnly)
-            .execute()
-            .map(|output| output.exit_code)?;
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|o| o.success())?;
 
-        if status != 0 {
-            command::CommandExecutor::new()
-                .command("apt-get")
-                .arg("install")
-                .arg("-y")
-                .arg(pkg)
-                .execute_privileged()?;
+        if !status {
+            AptGet::apt_install(&[pkg.to_string()])
+                .status()
+                .context("Failed to install packages required for PPA support")?;
             installed_packages.push(pkg.to_string());
         }
     }
 
     for ppa in &normalized_ppas {
-        command::CommandExecutor::new()
-            .command("add-apt-repository")
+        AptGet::add_apt_repository()
             .arg("-y")
             .arg(ppa)
-            .execute_privileged()?;
+            .status()
+            .context("Failed to add PPA")?;
         installed_ppas.push(ppa.clone());
     }
 
-    command::CommandExecutor::new()
-        .command("apt-get")
+    AptGet::apt_get()
         .arg("update")
         .arg("-y")
-        .execute_privileged()?;
+        .status()
+        .context("Failed to update apt repositories after adding PPAs")?;
 
     Ok((installed_ppas, installed_packages))
 }
@@ -180,18 +243,10 @@ pub fn add_ppas(ppas: &[String]) -> Result<(Vec<String>, Vec<String>)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
-    fn test_ppa_support_packages() {
-        assert!(PPA_SUPPORT_PACKAGES.contains(&"software-properties-common"));
-    }
-
-    #[test]
-    fn test_ppa_support_packages_debian() {
-        assert!(PPA_SUPPORT_PACKAGES_DEBIAN.contains(&"python3-launchpadlib"));
-    }
-
-    #[test]
+    #[serial]
     fn test_install_function_signature() {
         let packages = vec!["test".to_string()];
         let result = install(&packages, None, false);

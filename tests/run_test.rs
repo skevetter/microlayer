@@ -7,7 +7,7 @@ use crate::common::is_transient_error;
 
 #[test]
 #[serial]
-fn test_picolayer_run_python_version() {
+fn test_run_python_version() {
     let output = run_picolayer(&["run", "python@3.11", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !output.status.success() {
@@ -21,7 +21,7 @@ fn test_picolayer_run_python_version() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_node_version() {
+fn test_run_node_version() {
     let output = run_picolayer(&["run", "node@18", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !output.status.success() {
@@ -35,7 +35,7 @@ fn test_picolayer_run_node_version() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_with_working_directory() {
+fn test_run_with_working_directory() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let working_dir = temp_dir.path().to_str().unwrap();
     let script_path = temp_dir.path().join("test_script.py");
@@ -60,7 +60,7 @@ fn test_picolayer_run_with_working_directory() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_dependency_detection() {
+fn test_run_dependency_detection() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let package_json = temp_dir.path().join("package.json");
     std::fs::write(&package_json, r#"{"name": "test", "version": "1.0.0"}"#)
@@ -84,7 +84,7 @@ fn test_picolayer_run_dependency_detection() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_python_with_requirements() {
+fn test_run_python_with_requirements() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let requirements_txt = temp_dir.path().join("requirements.txt");
     std::fs::write(&requirements_txt, "requests==2.28.0")
@@ -109,7 +109,7 @@ fn test_picolayer_run_python_with_requirements() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_go_with_mod() {
+fn test_run_go_with_mod() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let go_mod = temp_dir.path().join("go.mod");
     std::fs::write(&go_mod, "module test\n\ngo 1.19").expect("Failed to write go.mod");
@@ -133,7 +133,7 @@ fn test_picolayer_run_go_with_mod() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_python_with_version_simple() {
+fn test_run_python_with_version_simple() {
     let output = run_picolayer(&["run", "python@3.10", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !output.status.success() {
@@ -147,7 +147,7 @@ fn test_picolayer_run_python_with_version_simple() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_python_latest() {
+fn test_run_python_latest() {
     let output = run_picolayer(&["run", "python", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !output.status.success() {
@@ -161,7 +161,7 @@ fn test_picolayer_run_python_latest() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_python_script() {
+fn test_run_python_script() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let script_path = temp_dir.path().join("test.py");
     std::fs::write(&script_path, "print('Hello from Python!')").expect("Failed to write script");
@@ -185,7 +185,7 @@ fn test_picolayer_run_python_script() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_node_with_version_simple() {
+fn test_run_node_with_version_simple() {
     let output = run_picolayer(&["run", "node@18", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !output.status.success() {
@@ -199,7 +199,21 @@ fn test_picolayer_run_node_with_version_simple() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_node_inline_code() {
+fn test_run_python_inline_code() {
+    let output = run_picolayer(&["run", "python", "--", "-c", "print('Hello from Python!')"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Error: {}", stderr);
+    };
+    println!("Output: {}", stdout);
+
+    assert!(stdout.contains("Hello from Python!"));
+}
+
+#[test]
+#[serial]
+fn test_run_node_inline_code() {
     let output = run_picolayer(&[
         "run",
         "node",
@@ -219,7 +233,7 @@ fn test_picolayer_run_node_inline_code() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_go_with_version() {
+fn test_run_go_with_version() {
     let output = run_picolayer(&["run", "go@1.21", "version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !output.status.success() {
@@ -233,7 +247,7 @@ fn test_picolayer_run_go_with_version() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_ruby_inline() {
+fn test_run_ruby_inline() {
     let output = run_picolayer(&["run", "ruby", "-e", "puts 'Hello from Ruby!'"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !output.status.success() {
@@ -247,7 +261,7 @@ fn test_picolayer_run_ruby_inline() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_with_env_vars() {
+fn test_run_with_env_vars() {
     let output = run_picolayer(&[
         "run",
         "--env",
@@ -269,7 +283,7 @@ fn test_picolayer_run_with_env_vars() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_with_keep_pkgx() {
+fn test_run_with_keep_pkgx() {
     let output = run_picolayer(&["run", "--keep-pkgx", "bash@5.1", "-c", "echo 'hello world'"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !output.status.success() {
@@ -283,7 +297,7 @@ fn test_picolayer_run_with_keep_pkgx() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_rust_with_version() {
+fn test_run_rust_with_version() {
     let output = run_picolayer(&["run", "rustc@1.70", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -298,7 +312,7 @@ fn test_picolayer_run_rust_with_version() {
 
 #[test]
 #[serial]
-fn test_picolayer_run_multiple_args() {
+fn test_run_multiple_args() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let file1 = temp_dir.path().join("file1.txt");
     let file2 = temp_dir.path().join("file2.txt");

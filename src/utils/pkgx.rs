@@ -60,7 +60,6 @@ async fn resolve_dependencies_async(
             .map_err(|e| anyhow::anyhow!("{}", e))?;
     }
 
-    let mut resolved_env = HashMap::new();
     let mut package_reqs = Vec::new();
     for dep in dependencies {
         match PackageReq::parse(dep) {
@@ -73,7 +72,7 @@ async fn resolve_dependencies_async(
     }
 
     if package_reqs.is_empty() {
-        return Ok((resolved_env, Vec::new()));
+        return Ok((HashMap::new(), Vec::new()));
     }
 
     let hydrated_packages = hydrate::hydrate(&package_reqs, |project| {
@@ -108,40 +107,11 @@ async fn resolve_dependencies_async(
     let runtime_env = libpkgx::env::mix_runtime(&platform_env, &installations, &conn)
         .map_err(|e| anyhow::anyhow!("Failed to mix runtime environment: {}", e))?;
 
-    for (key, value) in runtime_env {
-        let cleaned_value = clean_shell_expansion(&value, &key.to_string());
-        resolved_env.insert(key.to_string(), cleaned_value);
-    }
-
     info!(
         "Successfully resolved {} packages with libpkgx",
         dependencies.len()
     );
-    Ok((resolved_env, installations))
-}
-
-fn clean_shell_expansion(value: &str, key: &str) -> String {
-    use regex::Regex;
-
-    // Remove ${KEY:-default} syntax and just use the value part
-    let re = Regex::new(&format!(r"\$\{{{key}:-([^}}]+)\}}")).unwrap();
-    if let Some(caps) = re.captures(value) {
-        return caps.get(1).unwrap().as_str().to_string();
-    }
-
-    // Remove ${KEY:+:${KEY}} syntax
-    let re2 = Regex::new(&format!(r"\$\{{{key}:\+:[^}}]*\}}")).unwrap();
-    let cleaned = re2.replace_all(value, "");
-
-    // Remove trailing :${KEY} references
-    let re3 = Regex::new(&format!(r":?\$\{{{key}\}}$")).unwrap();
-    let cleaned = re3.replace_all(&cleaned, "");
-
-    // Remove leading :${KEY}: references
-    let re4 = Regex::new(&format!(r"^:?\$\{{{key}\}}:?")).unwrap();
-    let cleaned = re4.replace_all(&cleaned, "");
-
-    cleaned.to_string()
+    Ok((runtime_env, installations))
 }
 
 /// Query the pkgx pantry database to resolve a tool name to a project name
@@ -331,18 +301,6 @@ mod tests {
                 panic!("Unexpected error: {}", e);
             }
         }
-    }
-
-    #[test]
-    fn test_clean_shell_expansion() {
-        assert_eq!(
-            clean_shell_expansion("${PATH:-/usr/bin}", "PATH"),
-            "/usr/bin"
-        );
-        assert_eq!(
-            clean_shell_expansion("/usr/local/bin:${PATH}", "PATH"),
-            "/usr/local/bin"
-        );
     }
 
     #[test]

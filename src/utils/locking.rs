@@ -132,9 +132,11 @@ impl Drop for PkgxLock {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::thread;
 
     #[test]
+    #[serial]
     fn test_get_lock_path() {
         let path = get_lock_path();
         assert!(path.is_ok());
@@ -143,6 +145,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_acquire_and_release_lock() {
         let mut lock = acquire_lock().expect("Failed to acquire lock");
         let lock_path = lock.lock_path.clone();
@@ -156,6 +159,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_lock_auto_release_on_drop() {
         let lock_path = {
             let lock = acquire_lock().expect("Failed to acquire lock");

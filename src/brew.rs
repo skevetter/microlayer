@@ -1,40 +1,60 @@
-use crate::utils::command;
 use anyhow::{Context, Result};
-use log::info;
+
+struct Brew {}
+
+impl Brew {
+    fn brew() -> std::process::Command {
+        std::process::Command::new("brew")
+    }
+
+    fn install_packages(packages: &[String]) -> std::process::Command {
+        let mut cmd = std::process::Command::new("brew");
+        cmd.arg("install");
+        for pkg in packages {
+            cmd.arg(pkg);
+        }
+        cmd
+    }
+
+    fn update() -> std::process::Command {
+        let mut cmd = std::process::Command::new("brew");
+        cmd.arg("update");
+        cmd
+    }
+
+    fn cleanup() -> std::process::Command {
+        let mut cmd = std::process::Command::new("brew");
+        cmd.arg("cleanup");
+        cmd
+    }
+
+    fn rm_brew_cache() {
+        let _ = std::fs::remove_dir_all("~/Library/Caches/Homebrew");
+    }
+}
 
 /// Install packages using Homebrew
 pub fn install(packages: &[String]) -> Result<()> {
-    if !command::CommandBuilder::new("brew")
+    let status = Brew::brew()
         .arg("--version")
-        .execute_status()
-        .map(|status| status.is_success())?
-    {
-        anyhow::bail!(
-            "Homebrew is not available. Install Homebrew from https://brew.sh\n\
-             Installation: /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
-        );
+        .status()
+        .context("Failed to run 'brew --version'")?;
+
+    if !status.success() {
+        anyhow::bail!("Homebrew not found");
     }
-
-    command::CommandBuilder::new("brew")
-        .arg("update")
-        .execute()
+    Brew::update()
+        .status()
         .context("Failed to update Homebrew")?;
-
-    info!("Installing packages with brew: {}", packages.join(", "));
-    let pkgs = packages.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
-    command::CommandBuilder::new("brew")
-        .arg("install")
-        .args(&pkgs)
-        .execute()
-        .context("Failed to install packages with brew")?;
-
-    info!("Cleaning up Homebrew cache...");
-    command::CommandBuilder::new("brew")
-        .arg("cleanup")
-        .execute()
+    Brew::install_packages(packages)
+        .status()
+        .context("Failed to install packages with Homebrew")?;
+    Brew::cleanup()
+        .status()
         .context("Failed to clean up Homebrew cache")?;
 
-    info!("Installation complete!");
+    Brew::rm_brew_cache();
+
     Ok(())
 }
 
