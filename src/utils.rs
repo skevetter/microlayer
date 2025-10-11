@@ -2,6 +2,7 @@ pub mod analytics;
 pub mod command;
 pub mod linux_info;
 pub mod locking;
+pub mod pkgx;
 
 #[cfg(test)]
 mod tests {

@@ -24,7 +24,6 @@ pub enum ExecutionMode {
 #[derive(Debug, Clone)]
 pub enum OutputMode {
     Capture,
-    #[allow(dead_code)]
     Inherit,
     #[allow(dead_code)]
     Silent,
