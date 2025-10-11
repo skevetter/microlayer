@@ -117,7 +117,7 @@ fn get_platform_specific_paths() -> Result<Vec<PathBuf>> {
 }
 
 pub fn execute(input: &RunConfig) -> Result<()> {
-    // TODO: Search the install directories for pkgx and cache existing file. Picolayer should not mess
+    // TODO: Search the install directories for pkgx and cache existing file. Picolayer should not tamper
     // with existing pkgx installs. After the run command completes, the cache should be restored.
     // The rationale is the user may have pkgx installed before picolayer runs or wish to keep the
     // pkgx cache present for subsequent executions. The plan is to replace the keep_package and keep_pkgx flags with

@@ -1,41 +1,50 @@
 use anyhow::{Context, Result};
 
-struct Brew {}
+fn brew_cmd() -> std::process::Command {
+    std::process::Command::new("brew")
+}
 
-impl Brew {
-    fn brew() -> std::process::Command {
-        std::process::Command::new("brew")
+fn brew_install_packages(packages: &[String]) -> std::process::Command {
+    let mut cmd = std::process::Command::new("brew");
+    cmd.arg("install");
+    for pkg in packages {
+        cmd.arg(pkg);
     }
+    cmd
+}
 
-    fn install_packages(packages: &[String]) -> std::process::Command {
-        let mut cmd = std::process::Command::new("brew");
-        cmd.arg("install");
-        for pkg in packages {
-            cmd.arg(pkg);
-        }
-        cmd
-    }
+fn brew_update() -> std::process::Command {
+    let mut cmd = std::process::Command::new("brew");
+    cmd.arg("update");
+    cmd
+}
 
-    fn update() -> std::process::Command {
-        let mut cmd = std::process::Command::new("brew");
-        cmd.arg("update");
-        cmd
-    }
+fn brew_cleanup() -> std::process::Command {
+    let mut cmd = std::process::Command::new("brew");
+    cmd.arg("cleanup");
+    cmd
+}
 
-    fn cleanup() -> std::process::Command {
-        let mut cmd = std::process::Command::new("brew");
-        cmd.arg("cleanup");
-        cmd
+fn brew_backup_cache(cache_backup: &std::path::Path) -> Result<()> {
+    let cache_dir = dirs::home_dir()
+        .context("Failed to get home directory")?
+        .join("Library/Caches/Homebrew");
+    if cache_dir.exists() {
+        std::fs::create_dir_all(cache_backup).context("Failed to create backup cache directory")?;
+        std::process::Command::new("cp")
+            .arg("-p")
+            .arg("-R")
+            .arg(&cache_dir)
+            .arg(cache_backup)
+            .status()
+            .context("Failed to copy Homebrew cache")?;
     }
-
-    fn rm_brew_cache() {
-        let _ = std::fs::remove_dir_all("~/Library/Caches/Homebrew");
-    }
+    Ok(())
 }
 
 /// Install packages using Homebrew
 pub fn install(packages: &[String]) -> Result<()> {
-    let status = Brew::brew()
+    let status = brew_cmd()
         .arg("--version")
         .status()
         .context("Failed to run 'brew --version'")?;
@@ -43,17 +52,31 @@ pub fn install(packages: &[String]) -> Result<()> {
     if !status.success() {
         anyhow::bail!("Homebrew not found");
     }
-    Brew::update()
+
+    let temp_dir = tempfile::tempdir().context("Failed to create temp directory")?;
+    let cache_backup = temp_dir.path().join("brew_cache");
+    brew_backup_cache(&cache_backup).context("Failed to backup Homebrew cache")?;
+
+    brew_update()
         .status()
         .context("Failed to update Homebrew")?;
-    Brew::install_packages(packages)
+    brew_install_packages(packages)
         .status()
         .context("Failed to install packages with Homebrew")?;
-    Brew::cleanup()
+    brew_cleanup()
         .status()
         .context("Failed to clean up Homebrew cache")?;
 
-    Brew::rm_brew_cache();
+    if cache_backup.exists() {
+        fs_extra::dir::copy(
+            cache_backup,
+            dirs::home_dir().unwrap().join("Library/Caches/Homebrew"),
+            &fs_extra::dir::CopyOptions::new()
+                .overwrite(true)
+                .copy_inside(true),
+        )
+        .context("Failed to restore Homebrew cache")?;
+    }
 
     Ok(())
 }
