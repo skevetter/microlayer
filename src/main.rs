@@ -8,10 +8,30 @@ mod gh_release;
 mod run;
 mod utils;
 
-use anyhow::Result;
-use clap::{Parser, Subcommand};
+use anyhow::{Context, Result};
+use clap::{Parser, Subcommand, ValueEnum};
 use env_logger::Env;
 use log::info;
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum DeleteOption {
+    /// Don't delete anything (keep both pkgx and packages)
+    None,
+    /// Delete only the installed package
+    Package,
+    /// Delete the entire pkgx installation
+    Pkgx,
+}
+
+impl From<DeleteOption> for picolayer::DeleteOption {
+    fn from(opt: DeleteOption) -> Self {
+        match opt {
+            DeleteOption::None => picolayer::DeleteOption::None,
+            DeleteOption::Package => picolayer::DeleteOption::Package,
+            DeleteOption::Pkgx => picolayer::DeleteOption::Pkgx,
+        }
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "picolayer")]
@@ -141,13 +161,9 @@ enum Commands {
         #[arg(long)]
         env: Vec<String>,
 
-        /// Keep packages after command execution
-        #[arg(long, default_value = "false", conflicts_with = "keep_pkgx")]
-        keep_package: bool,
-
-        /// Remove pkgx and remove all cache/data files
-        #[arg(long, default_value = "false", conflicts_with = "keep_package")]
-        keep_pkgx: bool,
+        /// Delete options after command execution
+        #[arg(long, value_enum, default_value = "none")]
+        delete: DeleteOption,
     },
 }
 
@@ -158,6 +174,9 @@ fn normalize_pkg_input(packages: String) -> Vec<String> {
 fn main() -> Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
     info!("Starting picolayer");
+
+    // Acquire lock at the very start of the program
+    let _lock = utils::locking::acquire_lock().context("Failed to acquire lock")?;
 
     let cli = Cli::parse();
 
@@ -323,8 +342,7 @@ fn main() -> Result<()> {
             args,
             working_dir,
             env,
-            keep_package,
-            keep_pkgx,
+            delete,
         } => {
             let _ = utils::analytics::track_command(
                 "run",
@@ -332,8 +350,7 @@ fn main() -> Result<()> {
                     "tool": tool,
                     "arg_count": args.len(),
                     "env_count": env.len(),
-                    "keep_package": keep_package,
-                    "keep_pkgx": keep_pkgx,
+                    "delete": format!("{:?}", delete),
                 })),
             );
 
@@ -342,8 +359,7 @@ fn main() -> Result<()> {
                 args,
                 working_dir: &working_dir,
                 env_vars: env,
-                keep_package,
-                keep_pkgx,
+                delete: delete.into(),
             })?;
         }
     }
