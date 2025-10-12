@@ -27,7 +27,15 @@ pub fn execute(input: &RunConfig) -> Result<()> {
 
     // Create virtual environment directory structure
     let pkgx_dir = _temp_dir.path().join("x").join("pkgx");
-    let pantry_dir = _temp_dir.path().join("'x").join("pantry");
+    let pantry_dir = _temp_dir.path().join("x").join("pantry");
+
+    // Set PKGX_DIR and PKGX_PANTRY_DIR for for pantry isolation
+    unsafe {
+        std::env::set_var("PKGX_DIR", &pkgx_dir);
+    }
+    unsafe {
+        std::env::set_var("PKGX_PANTRY_DIR", &pantry_dir);
+    }
 
     // Ensure directories exist
     std::fs::create_dir_all(&pkgx_dir).context("Failed to create pkgx directory")?;
