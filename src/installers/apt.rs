@@ -1,4 +1,4 @@
-use crate::apt_get;
+use crate::installers::apt_get;
 use crate::utils::{filesystem, os};
 use anyhow::{Context, Result};
 use log::{info, warn};
