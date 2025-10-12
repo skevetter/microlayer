@@ -1,21 +1,122 @@
-use crate::utils::linux_info;
+use crate::config;
+use crate::utils::{filesystem, os};
 use anyhow::{Context, Result};
 use log::info;
-use std::fs;
 use std::path::Path;
+use tempfile::TempDir;
 
 const APK_CACHE_DIR: &str = "/var/cache/apk";
 
 fn apk_backup_cache(cache_backup: &Path) -> Result<()> {
-    if Path::new(APK_CACHE_DIR).exists() {
-        info!("Backing up apk cache to {:?}", cache_backup);
-        fs_extra::copy_items(
-            &[APK_CACHE_DIR],
-            cache_backup,
-            &fs_extra::dir::CopyOptions::new(),
-        )
-        .context("Failed to copy apk cache")?;
+    if !Path::new(APK_CACHE_DIR).exists() {
+        info!("No existing apk cache to back up");
+        return Ok(());
     }
+
+    info!("Backing up apk cache to {:?}", cache_backup);
+    match fs_extra::dir::copy(
+        APK_CACHE_DIR,
+        cache_backup,
+        &fs_extra::dir::CopyOptions::new(),
+    ) {
+        Ok(_) => {}
+        Err(err) if matches!(err.kind, fs_extra::error::ErrorKind::PermissionDenied) => {
+            info!("Restoring apk cache with sudo");
+            std::process::Command::new("sudo")
+                .arg("cp")
+                .arg("-r")
+                .arg(cache_backup)
+                .arg(APK_CACHE_DIR)
+                .status()
+                .context("Failed to restore apk cache with sudo")?;
+        }
+        Err(err) => {
+            return Err(anyhow::anyhow!("Failed to restore apk cache: {}", err));
+        }
+    }
+
+    match filesystem::is_dissimilar_dirs(cache_backup, APK_CACHE_DIR) {
+        Ok(is_different) => {
+            if is_different {
+                anyhow::bail!("backup differs from original");
+            }
+            info!("Cache backup and source are the same!")
+        }
+        Err(err) if matches!(err.kind(), Some(std::io::ErrorKind::PermissionDenied)) => {
+            info!("Comparing apt lists with sudo");
+            let status = std::process::Command::new("sudo")
+                .arg("diff")
+                .arg("-r")
+                .arg(APK_CACHE_DIR)
+                .arg(cache_backup)
+                .status()
+                .context("Failed to compare apk cache with sudo")?;
+            if !status.success() {
+                anyhow::bail!("backup differs from original");
+            }
+            info!("Cache backup and source are the same!")
+        }
+        Err(err) => {
+            return Err(anyhow::anyhow!("Failed to compare apt lists: {}", err));
+        }
+    }
+
+    Ok(())
+}
+
+fn restore_apk_cache(cache_backup: &Path) -> Result<()> {
+    if !cache_backup.exists() {
+        info!("No apk cache backup found at {:?}", cache_backup);
+        return Ok(());
+    }
+
+    match fs_extra::dir::copy(
+        cache_backup,
+        APK_CACHE_DIR,
+        &fs_extra::dir::CopyOptions::new(),
+    ) {
+        Ok(_) => {}
+        Err(err) if matches!(err.kind, fs_extra::error::ErrorKind::PermissionDenied) => {
+            info!("Restoring apk cache with sudo");
+            std::process::Command::new("sudo")
+                .arg("cp")
+                .arg("-r")
+                .arg(cache_backup)
+                .arg(APK_CACHE_DIR)
+                .status()
+                .context("Failed to restore apk cache with sudo")?;
+        }
+        Err(err) => {
+            return Err(anyhow::anyhow!("Failed to restore apk cache: {}", err));
+        }
+    }
+
+    match filesystem::is_dissimilar_dirs(cache_backup, APK_CACHE_DIR) {
+        Ok(is_different) => {
+            if is_different {
+                anyhow::bail!("backup differs from original");
+            }
+            info!("Cache backup and source are the same!")
+        }
+        Err(err) if matches!(err.kind(), Some(std::io::ErrorKind::PermissionDenied)) => {
+            info!("Comparing apk cache with sudo");
+            let status = std::process::Command::new("sudo")
+                .arg("diff")
+                .arg("-r")
+                .arg(APK_CACHE_DIR)
+                .arg(cache_backup)
+                .status()
+                .context("Failed to compare apk cache with sudo")?;
+            if !status.success() {
+                anyhow::bail!("backup differs from original");
+            }
+            info!("Cache backup and source are the same!")
+        }
+        Err(err) => {
+            return Err(anyhow::anyhow!("Failed to compare apk cache: {}", err));
+        }
+    }
+
     Ok(())
 }
 
@@ -49,13 +150,11 @@ fn apk_rm_cache() -> std::process::Command {
 /// Install packages using apk
 pub fn install(packages: &[String]) -> Result<()> {
     anyhow::ensure!(
-        linux_info::is_alpine(),
+        os::is_alpine(),
         "apk should be used on Alpine Linux distribution"
     );
 
-    let temp_dir = tempfile::Builder::new()
-        .prefix("picolayer_")
-        .tempdir()
+    let temp_dir = TempDir::with_prefix(config::PICO_CONFIG.temp_dir_prefix)
         .context("Failed to create temp directory")?;
     let cache_backup = temp_dir.path().join("apk");
 
@@ -80,8 +179,17 @@ pub fn install(packages: &[String]) -> Result<()> {
         .status()
         .context("Failed to remove apk cache")?;
 
-    if cache_backup.exists() {
-        fs::rename(cache_backup, APK_CACHE_DIR).context("Failed to restore apk cache")?;
+    restore_apk_cache(&cache_backup).context("Failed to restore apk cache")?;
+
+    if temp_dir.path().exists() {
+        // Out of scope directory may remain if directory is owned by root
+        // due to file permissions
+        std::process::Command::new("sudo")
+            .arg("rm")
+            .arg("-rf")
+            .arg(temp_dir.path())
+            .status()
+            .context("Failed to remove temporary directory")?;
     }
 
     Ok(())

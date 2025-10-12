@@ -2,6 +2,8 @@ use anyhow::{Context, Result};
 use log::info;
 use tempfile::TempDir;
 
+use crate::{config, utils::filesystem};
+
 fn brew_cmd() -> std::process::Command {
     std::process::Command::new("brew")
 }
@@ -40,13 +42,22 @@ fn brew_backup_cache(cache_backup: &std::path::Path) -> Result<()> {
         }
     };
 
-    if cache_dir.exists() {
-        fs_extra::dir::copy(
-            &cache_dir,
-            cache_backup,
-            &fs_extra::dir::CopyOptions::new().copy_inside(true),
-        )
-        .context("Failed to copy Homebrew cache")?;
+    if !cache_dir.exists() {
+        info!("No existing Homebrew cache to back up");
+        return Ok(());
+    }
+
+    fs_extra::dir::copy(
+        &cache_dir,
+        cache_backup,
+        &fs_extra::dir::CopyOptions::new().copy_inside(true),
+    )
+    .context("Failed to copy Homebrew cache")?;
+
+    if let Ok(result) = filesystem::is_dissimilar_dirs(cache_backup, cache_dir)
+        && result
+    {
+        anyhow::bail!("backup differs from original");
     }
 
     Ok(())
@@ -63,8 +74,9 @@ pub fn install(packages: &[String]) -> Result<()> {
         anyhow::bail!("Homebrew not found");
     }
 
-    let temp_dir = TempDir::with_prefix("picolayer_").context("Failed to create temp directory")?;
-    let cache_backup = temp_dir.path().join("brwe");
+    let temp_dir = TempDir::with_prefix(config::PICO_CONFIG.temp_dir_prefix)
+        .context("Failed to create temp directory")?;
+    let cache_backup = temp_dir.path().join("brew");
 
     info!("Backing up existing Homebrew cache");
     brew_backup_cache(&cache_backup).context("Failed to backup Homebrew cache")?;

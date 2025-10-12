@@ -1,8 +1,8 @@
 pub mod analytics;
-pub mod cache_verification;
-pub mod file_logger;
-pub mod linux_info;
+pub mod filesystem;
 pub mod locking;
+pub mod logging;
+pub mod os;
 pub mod pkgx;
 
 #[cfg(test)]
@@ -10,8 +10,8 @@ mod tests {
 
     #[test]
     fn test_linux_info_module_exists() {
-        use super::linux_info;
-        let _ = linux_info::detect_distro();
+        use super::os;
+        let _ = os::detect_distro();
     }
 
     #[test]

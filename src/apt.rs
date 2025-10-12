@@ -1,11 +1,8 @@
 use crate::apt_get;
-use crate::utils::linux_info;
+use crate::utils::{filesystem, os};
 use anyhow::{Context, Result};
 use log::{info, warn};
-use std::fs;
 use std::path::Path;
-use std::thread;
-use std::time::Duration;
 use tempfile::TempDir;
 
 const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
@@ -14,32 +11,6 @@ fn apt_update() -> std::process::Command {
     let mut cmd = std::process::Command::new("sudo");
     cmd.arg("apt").arg("update").arg("-y");
     cmd
-}
-
-/// Wait for apt/dpkg lock to be released
-fn wait_for_apt_lock() -> Result<()> {
-    const MAX_RETRIES: u32 = 30;
-    const RETRY_DELAY_SECS: u64 = 2;
-    
-    for i in 0..MAX_RETRIES {
-        // Check if lock files exist
-        let apt_lock_exists = Path::new("/var/lib/apt/lists/lock").exists();
-        let dpkg_lock_exists = Path::new("/var/lib/dpkg/lock").exists();
-        let dpkg_frontend_lock_exists = Path::new("/var/lib/dpkg/lock-frontend").exists();
-        
-        if !apt_lock_exists && !dpkg_lock_exists && !dpkg_frontend_lock_exists {
-            return Ok(());
-        }
-        
-        if i == 0 {
-            info!("Waiting for apt/dpkg locks to be released...");
-        }
-        
-        thread::sleep(Duration::from_secs(RETRY_DELAY_SECS));
-    }
-    
-    warn!("apt/dpkg locks still present after waiting, proceeding anyway");
-    Ok(())
 }
 
 fn apt_install_packages(packages: &[String]) -> std::process::Command {
@@ -55,17 +26,115 @@ fn apt_install_packages(packages: &[String]) -> std::process::Command {
 }
 
 fn apt_backup_lists(cache_backup: &Path) -> Result<()> {
-    if Path::new(APT_LISTS_DIR).exists() {
-        info!("Backing up apt lists cache to {:?}", cache_backup);
-        std::process::Command::new("sudo ")
-            .arg("cp")
-            .arg("-p")
-            .arg("-R")
-            .arg(APT_LISTS_DIR)
-            .arg(cache_backup.to_str().unwrap())
-            .status()
-            .context("Failed to copy apt lists cache")?;
+    if !Path::new(APT_LISTS_DIR).exists() {
+        info!("No existing apt lists cache to back up");
+        return Ok(());
     }
+
+    info!("Backing up apt lists cache to {:?}", cache_backup);
+    match fs_extra::copy_items(
+        &[APT_LISTS_DIR],
+        cache_backup,
+        &fs_extra::dir::CopyOptions::new(),
+    ) {
+        Ok(_) => {}
+        Err(err) if matches!(err.kind, fs_extra::error::ErrorKind::PermissionDenied) => {
+            info!("Backing up apt lists with sudo");
+            std::process::Command::new("sudo")
+                .arg("cp")
+                .arg("-r")
+                .arg(APT_LISTS_DIR)
+                .arg(cache_backup.to_str().unwrap())
+                .status()
+                .context("Failed to copy apt lists cache")?;
+        }
+        Err(err) => {
+            return Err(anyhow::anyhow!("Failed to backup apt lists: {}", err));
+        }
+    }
+
+    match filesystem::is_dissimilar_dirs(cache_backup, APT_LISTS_DIR) {
+        Ok(is_different) => {
+            if is_different {
+                anyhow::bail!("backup differs from original");
+            }
+            info!("Cache backup and source are the same!")
+        }
+        Err(err) if matches!(err.kind(), Some(std::io::ErrorKind::PermissionDenied)) => {
+            info!("Comparing apt lists with sudo");
+            let status = std::process::Command::new("sudo")
+                .arg("diff")
+                .arg("-r")
+                .arg(APT_LISTS_DIR)
+                .arg(cache_backup)
+                .status()
+                .context("Failed to compare apt lists with sudo")?;
+            if !status.success() {
+                anyhow::bail!("backup differs from original");
+            }
+            info!("Cache backup and source are the same!")
+        }
+        Err(err) => {
+            return Err(anyhow::anyhow!("Failed to compare apt lists: {}", err));
+        }
+    }
+
+    Ok(())
+}
+
+fn restore_apt_lists(cache_backup: &Path) -> Result<()> {
+    if !cache_backup.exists() {
+        info!("No apt lists backup found at {:?}", cache_backup);
+        return Ok(());
+    }
+
+    match fs_extra::dir::copy(
+        cache_backup,
+        APT_LISTS_DIR,
+        &fs_extra::dir::CopyOptions::new(),
+    ) {
+        Ok(_) => {}
+        Err(err) if matches!(err.kind, fs_extra::error::ErrorKind::PermissionDenied) => {
+            info!("Restoring apt lists with sudo");
+            std::process::Command::new("sudo")
+                .arg("cp")
+                .arg("-r")
+                .arg(cache_backup)
+                .arg(APT_LISTS_DIR)
+                .status()
+                .context("Failed to restore apt lists with sudo")?;
+        }
+        Err(err) => {
+            return Err(anyhow::anyhow!("Failed to restore apt lists: {}", err));
+        }
+    }
+
+    match filesystem::is_dissimilar_dirs(cache_backup, APT_LISTS_DIR) {
+        Ok(is_different) => {
+            if is_different {
+                anyhow::bail!("backup differs from original");
+            }
+            info!("Cache backup and source are the same!")
+        }
+        Err(err) if matches!(err.kind(), Some(std::io::ErrorKind::PermissionDenied)) => {
+            info!("Comparing apt lists with sudo");
+            let status = std::process::Command::new("sudo")
+                .arg("diff")
+                .arg("-r")
+                .arg(APT_LISTS_DIR)
+                .arg(cache_backup)
+                .status()
+                .context("Failed to compare apt lists with sudo")?;
+            if !status.success() {
+                anyhow::bail!("backup differs from original");
+            }
+            info!("Cache backup and source are the same!")
+        }
+        Err(err) => {
+            return Err(anyhow::anyhow!("Failed to compare apt lists: {}", err));
+        }
+    }
+
     Ok(())
 }
 
@@ -106,13 +175,13 @@ pub fn install(
     force_ppas_on_non_ubuntu: bool,
 ) -> Result<()> {
     anyhow::ensure!(
-        linux_info::is_debian_like(),
+        os::is_debian_like(),
         "apt should be used on Debian-like distributions (Debian, Ubuntu, etc.)"
     );
 
     let mut ppas = ppas.map(|p| p.to_vec()).unwrap_or_default();
 
-    if !ppas.is_empty() && !linux_info::is_ubuntu() && !force_ppas_on_non_ubuntu {
+    if !ppas.is_empty() && !os::is_ubuntu() && !force_ppas_on_non_ubuntu {
         warn!("PPAs are ignored on non-Ubuntu distros!");
         info!("Use --force-ppas-on-non-ubuntu to include them anyway.");
         ppas.clear();
@@ -120,9 +189,8 @@ pub fn install(
 
     let temp_dir = TempDir::with_prefix("picolayer_").context("Failed to create temp directory")?;
     let cache_backup = temp_dir.path().join("apt");
+    info!("Backup path: {:?}", cache_backup);
 
-    wait_for_apt_lock()?;
-    
     info!("Backing up existing apt lists cache");
     apt_backup_lists(&cache_backup)?;
 
@@ -163,8 +231,17 @@ pub fn install(
         .status()
         .context("Failed to remove apt lists cache")?;
 
-    if cache_backup.exists() {
-        fs::rename(cache_backup, APT_LISTS_DIR).context("Failed to restore apt lists cache")?;
+    restore_apt_lists(&cache_backup).context("Failed to restore apt lists")?;
+
+    if temp_dir.path().exists() {
+        // Out of scope directory may remain if directory is owned by root
+        // due to file permissions
+        std::process::Command::new("sudo")
+            .arg("rm")
+            .arg("-rf")
+            .arg(temp_dir.path())
+            .status()
+            .context("Failed to remove temporary directory")?;
     }
 
     Ok(())

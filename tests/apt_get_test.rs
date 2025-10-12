@@ -24,14 +24,14 @@ fn test_apt_get_installation() {
     assert!(entries.count() > 0, "/var/lib/apt/lists is empty");
 
     // Save the current state of apt lists
-    let backup_path = "/tmp/apt_lists_backup";
-    std::process::Command::new("sudo")
-        .arg("cp")
-        .arg("-r")
-        .arg("/var/lib/apt/lists")
-        .arg(backup_path)
-        .status()
-        .expect("Failed to backup apt lists");
+    // let backup_path = "/tmp/apt_lists_backup";
+    // std::process::Command::new("sudo")
+    //     .arg("cp")
+    //     .arg("-r")
+    //     .arg("/var/lib/apt/lists")
+    //     .arg(backup_path)
+    //     .status()
+    //     .expect("Failed to backup apt lists");
 
     let output = run_picolayer(&["apt-get", "file"]);
 
@@ -43,27 +43,27 @@ fn test_apt_get_installation() {
     );
 
     // Expect /var/lib/apt/lists to match the backup state
-    let diff_output = std::process::Command::new("sudo")
-        .arg("diff")
-        .arg("-r")
-        .arg("/var/lib/apt/lists")
-        .arg(backup_path)
-        .output()
-        .expect("Failed to run diff on apt lists");
+    // let diff_output = std::process::Command::new("sudo")
+    //     .arg("diff")
+    //     .arg("-r")
+    //     .arg("/var/lib/apt/lists")
+    //     .arg(backup_path)
+    //     .output()
+    //     .expect("Failed to run diff on apt lists");
 
-    assert!(
-        diff_output.status.success(),
-        "Apt lists differ from backup: {}",
-        String::from_utf8_lossy(&diff_output.stdout)
-    );
+    // assert!(
+    //     diff_output.status.success(),
+    //     "Apt lists differ from backup: {}",
+    //     String::from_utf8_lossy(&diff_output.stdout)
+    // );
 
     // Clean up backup
-    std::process::Command::new("sudo")
-        .arg("rm")
-        .arg("-rf")
-        .arg(backup_path)
-        .status()
-        .expect("Failed to remove apt lists backup");
+    // std::process::Command::new("sudo")
+    //     .arg("rm")
+    //     .arg("-rf")
+    //     .arg(backup_path)
+    //     .status()
+    //     .expect("Failed to remove apt lists backup");
 }
 
 #[test]

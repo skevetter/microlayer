@@ -102,30 +102,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_linux_distro_enum() {
-        assert_ne!(LinuxDistro::Ubuntu, LinuxDistro::Debian);
-        assert_ne!(LinuxDistro::Ubuntu, LinuxDistro::Alpine);
-        assert_ne!(LinuxDistro::Debian, LinuxDistro::Alpine);
-    }
-
-    #[test]
     fn test_detect_distro_returns_result() {
         let result = detect_distro();
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_is_ubuntu_returns_bool() {
-        let _ = is_ubuntu();
-    }
-
-    #[test]
-    fn test_is_debian_like_returns_bool() {
-        let _ = is_debian_like();
-    }
-
-    #[test]
-    fn test_is_alpine_returns_bool() {
-        let _ = is_alpine();
     }
 }

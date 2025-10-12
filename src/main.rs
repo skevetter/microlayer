@@ -148,12 +148,9 @@ fn normalize_pkg_input(packages: String) -> Vec<String> {
 }
 
 fn main() -> Result<()> {
-    utils::file_logger::init_logging().context("Failed to initialize logging")?;
+    utils::logging::init_logging().context("Failed to initialize logging")?;
     info!("Starting picolayer");
-
     let cli = Cli::parse();
-
-    // Acquire lock at the start of actual commands (not for help/version)
     let _lock = utils::locking::acquire_lock().context("Failed to acquire lock")?;
 
     match cli.command {
@@ -245,7 +242,6 @@ fn main() -> Result<()> {
                 })),
             );
 
-            // Parse options
             let options = if !option.is_empty() {
                 let mut opts = std::collections::HashMap::new();
                 for opt in option {
@@ -258,7 +254,6 @@ fn main() -> Result<()> {
                 None
             };
 
-            // Parse env vars
             let envs = if !env.is_empty() {
                 let mut env_map = std::collections::HashMap::new();
                 for e in env {
