@@ -1,9 +1,11 @@
 mod common;
 
 use common::{binary_exists, check_binary_version, is_transient_error, run_picolayer};
+use serial_test::serial;
 use std::path::Path;
 
 #[test]
+#[serial]
 fn test_pkgx_github_release_installation() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -51,6 +53,7 @@ fn test_pkgx_github_release_installation() {
 }
 
 #[test]
+#[serial]
 fn test_lazygit_specific_version_installation() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -98,6 +101,7 @@ fn test_lazygit_specific_version_installation() {
 }
 
 #[test]
+#[serial]
 fn test_lazygit_latest_with_checksum() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -146,6 +150,7 @@ fn test_lazygit_latest_with_checksum() {
 }
 
 #[test]
+#[serial]
 fn test_pkgx_with_gpg_verification() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -183,6 +188,7 @@ fn test_pkgx_with_gpg_verification() {
 }
 
 #[test]
+#[serial]
 fn test_pkgx_with_filter_and_custom_location() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -242,6 +248,7 @@ fn test_pkgx_with_filter_and_custom_location() {
 }
 
 #[test]
+#[serial]
 fn test_xz_extraction_with_real_archive() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -276,6 +283,7 @@ fn test_xz_extraction_with_real_archive() {
 }
 
 #[test]
+#[serial]
 fn test_xz_extraction_identifies_tar_xz_correctly() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -314,6 +322,7 @@ fn test_xz_extraction_identifies_tar_xz_correctly() {
 }
 
 #[test]
+#[serial]
 fn test_xz_extraction_handles_invalid_data() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -350,6 +359,7 @@ fn test_xz_extraction_handles_invalid_data() {
 }
 
 #[test]
+#[serial]
 fn test_xz_extraction_creates_directories() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let nested_path = temp_dir.path().join("nested").join("deep").join("path");
@@ -389,6 +399,7 @@ fn test_xz_extraction_creates_directories() {
 }
 
 #[test]
+#[serial]
 fn test_xz_extraction_with_multiple_binaries() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -410,6 +421,8 @@ fn test_xz_extraction_with_multiple_binaries() {
         "--filter",
         &format!("{}.*x86-64\\.tar\\.xz", os),
     ]);
+    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
+    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -429,6 +442,7 @@ fn test_xz_extraction_with_multiple_binaries() {
 }
 
 #[test]
+#[serial]
 fn test_xz_extraction_performance() {
     use std::time::Instant;
 
@@ -470,6 +484,7 @@ fn test_xz_extraction_performance() {
 }
 
 #[test]
+#[serial]
 fn test_pkgx_xz_installation_end_to_end() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -490,6 +505,8 @@ fn test_pkgx_xz_installation_end_to_end() {
         "--filter",
         &format!("{}.*x86-64\\.tar\\.xz", os),
     ]);
+    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
+    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -512,6 +529,7 @@ fn test_pkgx_xz_installation_end_to_end() {
 }
 
 #[test]
+#[serial]
 fn xz_extraction_test() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -532,6 +550,8 @@ fn xz_extraction_test() {
         "--filter",
         &format!("{}.*x86-64\\.tar\\.xz", os),
     ]);
+    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
+    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -546,6 +566,7 @@ fn xz_extraction_test() {
 }
 
 #[test]
+#[serial]
 fn test_xz_extraction_handles_empty_data() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let bin_location = temp_dir.path().to_str().unwrap();
@@ -561,6 +582,8 @@ fn test_xz_extraction_handles_empty_data() {
         "--filter",
         "nonexistent_pattern_that_matches_nothing",
     ]);
+    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
+    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
 
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);

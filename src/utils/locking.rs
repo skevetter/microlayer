@@ -12,11 +12,7 @@ const LOCK_MAX_RETRIES: u32 = 50;
 
 /// Get the lock file path for pkgx operations
 fn get_lock_path() -> Result<PathBuf> {
-    let lock_dir = if let Some(home_dir) = dirs_next::home_dir() {
-        home_dir.join(".pkgx")
-    } else {
-        PathBuf::from("/tmp")
-    };
+    let lock_dir = PathBuf::from("/tmp/picolayer");
 
     if !lock_dir.exists() {
         fs::create_dir_all(&lock_dir).context("Failed to create lock directory")?;
@@ -25,7 +21,7 @@ fn get_lock_path() -> Result<PathBuf> {
     Ok(lock_dir.join(LOCK_FILE_NAME))
 }
 
-/// Check if a lock file is stale (older than timeout)
+/// Check if a lock file is stale
 fn is_lock_stale(lock_path: &PathBuf) -> bool {
     if let Ok(metadata) = fs::metadata(lock_path)
         && let Ok(modified) = metadata.modified()
@@ -195,6 +191,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_stale_lock_detection() {
         let lock_path = get_lock_path().expect("Failed to get lock path");
 
