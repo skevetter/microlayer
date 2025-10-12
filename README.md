@@ -10,7 +10,7 @@ This project is inspired by the [nanolayer](https://github.com/devcontainers-ext
 - **apk**: Install Alpine packages with automatic cleanup
 - **brew**: Install packages using Homebrew
 - **gh-release**: Install binaries from GitHub releases with checksum and GPG verification
-- **run**: Execute commands with pkgx for automatic dependency management
+- **x**: Execute commands with pkgx
 
 ## Installation
 
@@ -110,33 +110,33 @@ Run any version of any tool using pkgx for automatic dependency management:
 
 ```bash
 # Run specific versions
-picolayer run python@3.11 --version
+picolayer x python@3.11 --version
 
-picolayer run node@18 --version
+picolayer x node@18 --version
 ```
 
 Run with working directory:
 
 ```bash
-picolayer run python script.py --working-dir /path/to/project
+picolayer x python script.py --working-dir /path/to/project
 ```
 
 Run with environment variables:
 
 ```bash
-picolayer run python app.py --env "DEBUG=1" --env "PORT=8000"
+picolayer x python app.py --env "DEBUG=1" --env "PORT=8000"
 ```
 
 Keep packages after execution (default is to delete):
 
 ```bash
-picolayer run "python@3.11" script.py --keep-package
+picolayer x "python@3.11" script.py --keep-package
 ```
 
 Ignore local dependencies and force use of pkgx:
 
 ```bash
-picolayer run "python" script.py --ignore-local-dependencies
+picolayer x "python" script.py --ignore-local-dependencies
 ```
 
 **Note**: By default, picolayer now cleans up packages after execution to minimize disk usage. Use `--keep-package` to preserve them.
