@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use log::{info, warn};
 use std::fs;
 use std::path::Path;
+use tempfile::TempDir;
 
 const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
 
@@ -27,6 +28,7 @@ fn apt_install_packages(packages: &[String]) -> std::process::Command {
 
 fn apt_backup_lists(cache_backup: &Path) -> Result<()> {
     if Path::new(APT_LISTS_DIR).exists() {
+        info!("Backing up apt lists cache to {:?}", cache_backup);
         std::process::Command::new("sudo ")
             .arg("cp")
             .arg("-p")
@@ -88,10 +90,13 @@ pub fn install(
         ppas.clear();
     }
 
-    let temp_dir = tempfile::tempdir().context("Failed to create temp directory")?;
-    let cache_backup = temp_dir.path().join("lists");
+    let temp_dir = TempDir::with_prefix("picolayer_").context("Failed to create temp directory")?;
+    let cache_backup = temp_dir.path().join("apt");
 
+    info!("Backing up existing apt lists cache");
     apt_backup_lists(&cache_backup)?;
+
+    info!("Updating apt repositories");
     apt_update()
         .status()
         .context("Failed to update apt repositories")?;
@@ -105,16 +110,25 @@ pub fn install(
         installed_ppa_packages.extend(ppa_pkgs);
     }
 
+    info!("Installing apt packages: {:?}", packages);
     apt_install_packages(packages)
         .status()
         .context("Failed to install apt packages")?;
+
+    info!("Removing added PPAs and packages installed for PPA support");
     remove_ppas(&installed_ppas)
         .status()
         .context("Failed to remove PPAs")?;
+
+    info!("Purging packages installed for PPA support");
     apt_purge(installed_ppa_packages.as_slice())
         .status()
         .context("Failed to purge package installed for PPA support")?;
+
+    info!("Cleaning up apt cache");
     apt_clean().status().context("Failed to clean apt cache")?;
+
+    info!("Removing apt lists cache directory");
     apt_rm_cache()
         .status()
         .context("Failed to remove apt lists cache")?;
@@ -129,9 +143,11 @@ pub fn install(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
-    fn test_install_function_signature() {
+    #[serial]
+    fn test_apt() {
         let packages = vec!["curl".to_string()];
         let _ = install(&packages, None, false);
     }

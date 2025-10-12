@@ -1,8 +1,10 @@
 use crate::apt_get;
 use crate::utils::linux_info;
 use anyhow::{Context, Result};
+use log::info;
 use std::fs;
 use std::path::Path;
+use tempfile::TempDir;
 
 const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
 
@@ -26,6 +28,7 @@ fn apt_clean() -> std::process::Command {
 
 fn apt_backup_lists(cache_backup: &Path) -> Result<()> {
     if Path::new(APT_LISTS_DIR).exists() {
+        info!("Backing up apt lists cache to {:?}", cache_backup);
         let mut cmd = std::process::Command::new("sudo");
         cmd.arg("cp")
             .arg("-p")
@@ -63,20 +66,31 @@ pub fn install(packages: &[String]) -> Result<()> {
         "aptitude should be used on Debian-like distributions (Debian, Ubuntu, etc.)"
     );
 
-    let temp_dir = tempfile::tempdir().context("Failed to create temp directory")?;
-    let cache_backup = temp_dir.path().join("lists");
+    let temp_dir = TempDir::with_prefix("picolayer_").context("Failed to create temp directory")?;
+    let cache_backup = temp_dir.path().join("aptitude");
 
+    info!("Backing up existing apt lists cache");
     apt_backup_lists(&cache_backup)?;
+
+    info!("Updating aptitude repositories");
     apt_update()
         .status()
         .context("Failed to update aptitude repositories")?;
+
+    info!("Installing aptitude");
     apt_get_install_aptitude().context("Failed to install aptitude")?;
+
+    info!("Installing aptitude packages: {:?}", packages);
     aptitude_install_packages(packages)
         .status()
         .context("Failed to install packages with aptitude")?;
+
+    info!("Cleaning aptitude cache");
     apt_clean()
         .status()
         .context("Failed to clean aptitude cache")?;
+
+    info!("Removing aptitude cache directory");
     apt_rm_cache()
         .status()
         .context("Failed to remove aptitude cache")?;
@@ -91,9 +105,11 @@ pub fn install(packages: &[String]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
-    fn test_install_function_signature() {
+    #[serial]
+    fn test_aptitude() {
         let packages = vec!["curl".to_string()];
         let _ = aptitude_install_packages(&packages);
     }

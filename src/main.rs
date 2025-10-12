@@ -5,12 +5,11 @@ mod aptitude;
 mod brew;
 mod devcontainer_feature;
 mod gh_release;
-mod run;
 mod utils;
+mod x;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use env_logger::Env;
 use log::info;
 
 #[derive(Parser)]
@@ -125,7 +124,7 @@ enum Commands {
     },
 
     /// Run a command using pkgx
-    Run {
+    X {
         /// Tool specification (e.g., "python@3.10", "node@18", "python")
         tool: String,
 
@@ -140,14 +139,6 @@ enum Commands {
         /// Environment variables (key=value pairs)
         #[arg(long)]
         env: Vec<String>,
-
-        /// Keep packages after command execution
-        #[arg(long, default_value = "false", conflicts_with = "keep_pkgx")]
-        keep_package: bool,
-
-        /// Remove pkgx and remove all cache/data files
-        #[arg(long, default_value = "false", conflicts_with = "keep_package")]
-        keep_pkgx: bool,
     },
 }
 
@@ -156,10 +147,13 @@ fn normalize_pkg_input(packages: String) -> Vec<String> {
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
+    env_logger::init();
     info!("Starting picolayer");
 
     let cli = Cli::parse();
+
+    // Acquire lock at the start of actual commands (not for help/version)
+    let _lock = utils::locking::acquire_lock().context("Failed to acquire lock")?;
 
     match cli.command {
         Commands::AptGet {
@@ -318,32 +312,26 @@ fn main() -> Result<()> {
             })?;
         }
 
-        Commands::Run {
+        Commands::X {
             tool,
             args,
             working_dir,
             env,
-            keep_package,
-            keep_pkgx,
         } => {
             let _ = utils::analytics::track_command(
-                "run",
+                "x",
                 Some(serde_json::json!({
                     "tool": tool,
                     "arg_count": args.len(),
                     "env_count": env.len(),
-                    "keep_package": keep_package,
-                    "keep_pkgx": keep_pkgx,
                 })),
             );
 
-            run::execute(&run::RunConfig {
+            x::execute(&x::RunConfig {
                 tool: &tool,
                 args,
                 working_dir: &working_dir,
                 env_vars: env,
-                keep_package,
-                keep_pkgx,
             })?;
         }
     }
@@ -354,14 +342,17 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_normalize_pkg_input_single() {
         let result = normalize_pkg_input("package1".to_string());
         assert_eq!(result, vec!["package1".to_string()]);
     }
 
     #[test]
+    #[serial]
     fn test_normalize_pkg_input_multiple() {
         let result = normalize_pkg_input("package1,package2,package3".to_string());
         assert_eq!(
@@ -375,6 +366,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_normalize_pkg_input_with_spaces() {
         let result = normalize_pkg_input("package1 , package2 , package3".to_string());
         assert_eq!(
@@ -388,18 +380,21 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_normalize_pkg_input_empty() {
         let result = normalize_pkg_input("".to_string());
         assert_eq!(result, vec!["".to_string()]);
     }
 
     #[test]
+    #[serial]
     fn test_cli_parser_exists() {
         use clap::CommandFactory;
         let _ = Cli::command();
     }
 
     #[test]
+    #[serial]
     fn test_commands_enum_variants() {
         use clap::CommandFactory;
         let cmd = Cli::command();
@@ -409,6 +404,6 @@ mod tests {
         assert!(subcommands.contains(&"apk"));
         assert!(subcommands.contains(&"brew"));
         assert!(subcommands.contains(&"gh-release"));
-        assert!(subcommands.contains(&"run"));
+        assert!(subcommands.contains(&"x"));
     }
 }

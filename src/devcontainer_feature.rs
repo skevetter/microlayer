@@ -401,8 +401,10 @@ pub fn install(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_parse_oci_ref_with_version() {
         let result = parse_oci_ref("ghcr.io/devcontainers/features/node:1.0.0");
         assert!(result.is_ok());
@@ -414,6 +416,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_parse_oci_ref_without_version() {
         let result = parse_oci_ref("ghcr.io/devcontainers/features/node");
         assert!(result.is_ok());
@@ -423,6 +426,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_parse_oci_ref_with_multiple_namespace_parts() {
         let result = parse_oci_ref("ghcr.io/devcontainers-contrib/features/go-task:1");
         assert!(result.is_ok());
@@ -433,12 +437,14 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_parse_oci_ref_invalid() {
         let result = parse_oci_ref("invalid");
         assert!(result.is_err());
     }
 
     #[test]
+    #[serial]
     fn test_resolve_options_with_defaults() {
         let mut options_def = HashMap::new();
         options_def.insert(
@@ -465,6 +471,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_resolve_options_override() {
         let mut options_def = HashMap::new();
         options_def.insert(

@@ -2,6 +2,7 @@ use crate::utils::linux_info;
 use anyhow::{Context, Result};
 use log::{info, warn};
 use std::path::Path;
+use tempfile::TempDir;
 
 const PPA_SUPPORT_PACKAGES: &[&str] = &["software-properties-common"];
 const PPA_SUPPORT_PACKAGES_DEBIAN: &[&str] = &["python3-launchpadlib"];
@@ -81,6 +82,7 @@ fn backup_apt_lists(cache_backup: &Path) -> Result<()> {
         match fs_extra::dir::copy(APT_LISTS_DIR, cache_backup, &options) {
             Ok(_) => {}
             Err(err) if matches!(err.kind, fs_extra::error::ErrorKind::PermissionDenied) => {
+                info!("Backing up apt lists with sudo");
                 std::process::Command::new("sudo")
                     .arg("cp")
                     .arg("-r")
@@ -105,6 +107,7 @@ fn restore_apt_lists(cache_backup: &Path) -> Result<()> {
         match fs_extra::dir::copy(cache_backup, APT_LISTS_DIR, &options) {
             Ok(_) => {}
             Err(err) if matches!(err.kind, fs_extra::error::ErrorKind::PermissionDenied) => {
+                info!("Restoring apt lists with sudo");
                 std::process::Command::new("sudo")
                     .arg("cp")
                     .arg("-r")
@@ -133,15 +136,14 @@ pub fn install(
     );
 
     let mut ppas = ppas.map(|p| p.to_vec()).unwrap_or_default();
-
     if !ppas.is_empty() && !linux_info::is_ubuntu() && !force_ppas_on_non_ubuntu {
         warn!("PPAs are ignored on non-Ubuntu distros!");
         info!("Use --force-ppas-on-non-ubuntu to include them anyway.");
         ppas.clear();
     }
 
-    let temp_dir = tempfile::tempdir().context("Failed to create temp directory")?;
-    let cache_backup = temp_dir.path().join("lists");
+    let temp_dir = TempDir::with_prefix("picolayer_").context("Failed to create temp directory")?;
+    let cache_backup = temp_dir.path().join("apt_get");
 
     backup_apt_lists(&cache_backup)?;
     apt_update()
@@ -157,10 +159,13 @@ pub fn install(
         installed_ppa_packages = ppa_pkgs;
     }
 
+    info!("Installing apt packages: {:?}", packages);
     apt_install(packages)
         .status()
         .context("Failed to install apt packages")?;
+
     if !ppas.is_empty() {
+        info!("Removing added PPAs and packages installed for PPA support");
         apt_remove_ppas(&installed_ppas)
             .status()
             .context("Failed to remove PPAs")?;
@@ -168,10 +173,14 @@ pub fn install(
             .status()
             .context("Failed to purge packages installed for PPA support")?;
     }
+
+    info!("Cleaning up apt cache");
     apt_get()
         .arg("clean")
         .status()
         .context("Failed to clean apt cache")?;
+
+    info!("Cleaning up apt lists cache");
     apt_rm_cache()
         .arg(APT_LISTS_DIR)
         .status()
@@ -258,7 +267,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_install_function_signature() {
+    fn test_apt_get() {
         let packages = vec!["test".to_string()];
         let result = install(&packages, None, false);
         let _ = result;

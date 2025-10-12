@@ -3,9 +3,12 @@ mod common;
 #[cfg(target_os = "linux")]
 use common::run_picolayer;
 #[cfg(target_os = "linux")]
+use serial_test::serial;
+#[cfg(target_os = "linux")]
 use std::process::Command;
 
 #[test]
+#[serial]
 #[cfg(target_os = "linux")]
 fn test_apk_installation() {
     let has_apk = Command::new("which")
@@ -37,6 +40,7 @@ fn test_apk_installation() {
 }
 
 #[test]
+#[serial]
 #[cfg(target_os = "linux")]
 fn test_apk_multiple_packages() {
     let has_apk = Command::new("which")

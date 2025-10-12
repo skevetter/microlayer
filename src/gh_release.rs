@@ -57,6 +57,7 @@ impl Installer {
 
     fn install(&self, config: &GhReleaseConfig) -> Result<()> {
         info!("Fetching release information for {}", config.repo);
+
         let release = self.fetch_release(config.repo, config.version)?;
         info!("Installing from release: {}", release.tag_name);
 
@@ -801,8 +802,10 @@ fn compute_sha256(data: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_compute_sha256() {
         let data = b"hello world";
         let hash = compute_sha256(data);
@@ -813,6 +816,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_get_filename_variants() {
         let variants = get_filename_variants("file.tar.gz");
         assert!(variants.contains(&"file.tar.gz".to_string()));
@@ -820,6 +824,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_parse_checksum_line_success() {
         let content = "abc123def456  file.tar.gz\n";
         let result = parse_checksum_line(content, "file.tar.gz");
@@ -828,6 +833,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_parse_checksum_line_not_found() {
         let content = "abc123def456  other-file.tar.gz\n";
         let result = parse_checksum_line(content, "nonexistent-file.tar.gz");
@@ -835,6 +841,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_asset_selector_arch_patterns() {
         let selector = AssetSelector::new();
         let patterns = selector.get_arch_patterns("x86_64");
@@ -843,6 +850,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_asset_selector_os_patterns() {
         let selector = AssetSelector::new();
         let patterns = selector.get_os_patterns("linux");
@@ -851,6 +859,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_asset_selector_is_archive() {
         let selector = AssetSelector::new();
         assert!(selector.is_archive("file.tar.gz"));
@@ -861,6 +870,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_asset_installer_is_tar_xz_archive() {
         let client = Client::new();
         let installer = AssetInstaller::new(&client);

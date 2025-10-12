@@ -53,8 +53,8 @@ fn test_gh_release_help() {
 
 #[test]
 fn test_run_help() {
-    let output = run_picolayer(&["run", "--help"]);
+    let output = run_picolayer(&["x", "--help"]);
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("run"));
+    assert!(stdout.contains("x"));
 }
