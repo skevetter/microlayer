@@ -196,26 +196,15 @@ pub fn projects_for_symbol(symbol: &str, conn: &Connection) -> Result<Vec<String
         .map_err(|e| anyhow::anyhow!("Failed to query pantry database: {}", e))
 }
 
-/// Query the pantry database for dependencies of a project
-#[allow(dead_code)]
-pub fn deps_for_project(
-    project: &String,
-    conn: &Connection,
-) -> Result<Vec<libpkgx::types::PackageReq>, Box<dyn std::error::Error>> {
-    libpkgx::pantry_db::deps_for_project(project, conn)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libpkgx::{config::Config, sync};
 
     fn setup_connection() -> Result<Connection> {
         let config = Config::new()?;
         std::fs::create_dir_all(config.pantry_db_file.parent().unwrap())?;
         let mut conn = Connection::open(&config.pantry_db_file)?;
 
-        // Sync the database if needed
         let rt = tokio::runtime::Runtime::new()?;
         rt.block_on(async {
             if sync::should(&config).unwrap_or(false) {
@@ -234,8 +223,6 @@ mod tests {
 
     #[test]
     fn test_map_tool_to_project_python() {
-        use libpkgx::{config::Config, sync};
-
         let config = Config::new().expect("Failed to initialize config");
         std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
         let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
@@ -258,8 +245,6 @@ mod tests {
 
     #[test]
     fn test_map_tool_to_project_unknown() {
-        use libpkgx::{config::Config, sync};
-
         let config = Config::new().expect("Failed to initialize config");
         std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
         let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
