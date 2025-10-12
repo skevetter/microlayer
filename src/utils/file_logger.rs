@@ -58,7 +58,6 @@ pub fn log_to_file(message: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
 
     #[test]
     fn test_log_to_file_without_init() {

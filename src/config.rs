@@ -3,6 +3,7 @@ use std::path::PathBuf;
 /// Centralized configuration for picolayer program settings
 pub struct Config {
     /// Base directory for temporary files
+    #[allow(dead_code)]
     pub temp_dir_prefix: &'static str,
     
     /// Lock file directory

@@ -5,6 +5,7 @@ use std::path::Path;
 use walkdir::WalkDir;
 
 /// Compute SHA256 hash of a directory's contents
+#[allow(dead_code)]
 pub fn compute_directory_hash(dir_path: &Path) -> Result<String> {
     let mut hasher = Sha256::new();
     
@@ -37,6 +38,7 @@ pub fn compute_directory_hash(dir_path: &Path) -> Result<String> {
 }
 
 /// Verify that a directory's hash matches the expected hash
+#[allow(dead_code)]
 pub fn verify_directory_hash(dir_path: &Path, expected_hash: &str) -> Result<bool> {
     let actual_hash = compute_directory_hash(dir_path)?;
     Ok(actual_hash == expected_hash)
