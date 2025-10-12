@@ -3,6 +3,7 @@ mod apt;
 mod apt_get;
 mod aptitude;
 mod brew;
+mod config;
 mod devcontainer_feature;
 mod gh_release;
 mod utils;
@@ -147,7 +148,7 @@ fn normalize_pkg_input(packages: String) -> Vec<String> {
 }
 
 fn main() -> Result<()> {
-    env_logger::init();
+    utils::file_logger::init_logging().context("Failed to initialize logging")?;
     info!("Starting picolayer");
 
     let cli = Cli::parse();

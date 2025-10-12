@@ -35,9 +35,6 @@ fn test_apt_get_installation() {
 
     let output = run_picolayer(&["apt-get", "file"]);
 
-    println!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    println!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     // Expect the command to succeed
     assert!(
         output.status.success(),
@@ -95,9 +92,6 @@ fn test_apt_get_from_clean_state() {
 
     // Install any package to trigger apt-get update
     let output = run_picolayer(&["apt-get", "curl"]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
 
     // Expect the command to succeed
     assert!(

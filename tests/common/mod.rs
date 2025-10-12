@@ -10,10 +10,16 @@ pub const PICOLAYER_BIN: &str = env!("CARGO_BIN_EXE_picolayer");
 /// Run picolayer with the given arguments and return the output
 #[allow(dead_code)]
 pub fn run_picolayer(args: &[&str]) -> std::process::Output {
-    Command::new(PICOLAYER_BIN)
+    let output = Command::new(PICOLAYER_BIN)
         .args(args)
         .output()
-        .expect("Failed to execute picolayer")
+        .expect("Failed to execute picolayer");
+    
+    // Print STDOUT and STDERR to help with debugging
+    println!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
+    println!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
+    
+    output
 }
 
 /// Check if an error message indicates a transient error that should be retried or ignored

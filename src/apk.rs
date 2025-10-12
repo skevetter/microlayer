@@ -53,7 +53,10 @@ pub fn install(packages: &[String]) -> Result<()> {
         "apk should be used on Alpine Linux distribution"
     );
 
-    let temp_dir = tempfile::tempdir().context("Failed to create temp directory")?;
+    let temp_dir = tempfile::Builder::new()
+        .prefix("picolayer_")
+        .tempdir()
+        .context("Failed to create temp directory")?;
     let cache_backup = temp_dir.path().join("apk");
 
     info!("Backing up existing apk cache");

@@ -4,6 +4,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
+use crate::config::Config;
 
 const LOCK_FILE_NAME: &str = ".picolayer.lock";
 const LOCK_TIMEOUT_SECS: u64 = 300; // 5 minutes
@@ -12,7 +13,8 @@ const LOCK_MAX_RETRIES: u32 = 50;
 
 /// Get the lock file path for pkgx operations
 fn get_lock_path() -> Result<PathBuf> {
-    let lock_dir = PathBuf::from("/tmp/picolayer");
+    let config = Config::global();
+    let lock_dir = PathBuf::from(config.lock_dir);
 
     if !lock_dir.exists() {
         fs::create_dir_all(&lock_dir).context("Failed to create lock directory")?;

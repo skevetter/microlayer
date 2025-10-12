@@ -1,4 +1,6 @@
 pub mod analytics;
+pub mod cache_verification;
+pub mod file_logger;
 pub mod linux_info;
 pub mod locking;
 pub mod pkgx;
