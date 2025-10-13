@@ -78,6 +78,8 @@ pub fn install(
         .map(|o| debug!("Apt clean output: {:?}", o))
         .context("Failed to clean apt cache")?;
 
+    utils::os::ensure_sudo().context("Failed to obtain sudo privileges")?;
+
     if os::copy_files(&cache_backup, Path::new(APT_LISTS_DIR)).is_err() {
         anyhow::bail!("Failed to restore apt lists from backup");
     }
