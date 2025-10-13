@@ -114,6 +114,10 @@ enum Commands {
         /// GPG public key for signature verification (can be a URL, file path, or key content)
         #[arg(long)]
         gpg_key: Option<String>,
+
+        /// Exclude pre-release versions when version is "latest"
+        #[arg(long, default_value = "false")]
+        exclude_prerelease: bool,
     },
 
     /// Run a command using pkgx
@@ -274,6 +278,7 @@ fn main() -> Result<()> {
             verify_checksum,
             checksum_text,
             gpg_key,
+            exclude_prerelease,
         } => {
             let binary_list: Vec<String> = binary_names
                 .split(',')
@@ -289,6 +294,7 @@ fn main() -> Result<()> {
                     "has_filter": filter.is_some(),
                     "verify_checksum": verify_checksum,
                     "has_gpg_key": gpg_key.is_some(),
+                    "exclude_prerelease": exclude_prerelease,
                 })),
             );
 
@@ -301,6 +307,7 @@ fn main() -> Result<()> {
                 verify_checksum,
                 checksum_text: checksum_text.as_deref(),
                 gpg_key: gpg_key.as_deref(),
+                exclude_prerelease,
             })?;
         }
 

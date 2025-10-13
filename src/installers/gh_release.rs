@@ -19,6 +19,7 @@ const GITHUB_API: &str = "api.github.com";
 struct Release {
     tag_name: String,
     assets: Vec<Asset>,
+    prerelease: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -37,6 +38,7 @@ pub struct GhReleaseConfig<'a> {
     pub verify_checksum: bool,
     pub checksum_text: Option<&'a str>,
     pub gpg_key: Option<&'a str>,
+    pub exclude_prerelease: bool,
 }
 
 /// Install binaries from a GitHub release
@@ -58,7 +60,7 @@ impl Installer {
     fn install(&self, config: &GhReleaseConfig) -> Result<()> {
         info!("Fetching release information for {}", config.repo);
 
-        let release = self.fetch_release(config.repo, config.version)?;
+        let release = self.fetch_release(config.repo, config.version, config.exclude_prerelease)?;
         info!("Installing from release: {}", release.tag_name);
 
         let gpg_verification = config.verify_checksum && config.gpg_key.is_some();
@@ -77,8 +79,8 @@ impl Installer {
         Ok(())
     }
 
-    fn fetch_release(&self, repo: &str, version: &str) -> Result<Release> {
-        ReleaseClient::new(&self.client).fetch(repo, version)
+    fn fetch_release(&self, repo: &str, version: &str, exclude_prerelease: bool) -> Result<Release> {
+        ReleaseClient::new(&self.client).fetch(repo, version, exclude_prerelease)
     }
 
     fn select_asset<'a>(
@@ -122,12 +124,37 @@ impl<'a> ReleaseClient<'a> {
         Self { client }
     }
 
-    fn fetch(&self, repo: &str, version: &str) -> Result<Release> {
-        let url = self.build_url(repo, version);
+    fn fetch(&self, repo: &str, version: &str, exclude_prerelease: bool) -> Result<Release> {
+        // If a specific version is requested, fetch that release directly
+        if version != "latest" {
+            let url = format!(
+                "https://{}/repos/{}/releases/tags/{}",
+                GITHUB_API, repo, version
+            );
+            return self.fetch_release_from_url(&url);
+        }
 
+        // For "latest", check if we need to filter pre-releases
+        if exclude_prerelease {
+            // Fetch all releases and find the first non-prerelease
+            let url = format!("https://{}/repos/{}/releases", GITHUB_API, repo);
+            let releases: Vec<Release> = self.fetch_releases_from_url(&url)?;
+            
+            releases
+                .into_iter()
+                .find(|r| !r.prerelease)
+                .context("No stable release found (all releases are pre-releases)")
+        } else {
+            // Use the standard latest endpoint which may include pre-releases
+            let url = format!("https://{}/repos/{}/releases/latest", GITHUB_API, repo);
+            self.fetch_release_from_url(&url)
+        }
+    }
+
+    fn fetch_release_from_url(&self, url: &str) -> Result<Release> {
         let response = self
             .client
-            .get(&url)
+            .get(url)
             .header("User-Agent", "picolayer")
             .send()
             .context("Failed to fetch release information")?;
@@ -139,15 +166,19 @@ impl<'a> ReleaseClient<'a> {
         response.json().context("Failed to parse release JSON")
     }
 
-    fn build_url(&self, repo: &str, version: &str) -> String {
-        if version == "latest" {
-            format!("https://{}/repos/{}/releases/latest", GITHUB_API, repo)
-        } else {
-            format!(
-                "https://{}/repos/{}/releases/tags/{}",
-                GITHUB_API, repo, version
-            )
+    fn fetch_releases_from_url(&self, url: &str) -> Result<Vec<Release>> {
+        let response = self
+            .client
+            .get(url)
+            .header("User-Agent", "picolayer")
+            .send()
+            .context("Failed to fetch releases")?;
+
+        if !response.status().is_success() {
+            anyhow::bail!("Failed to fetch releases: {}", response.status());
         }
+
+        response.json().context("Failed to parse releases JSON")
     }
 }
 
@@ -881,5 +912,35 @@ mod tests {
 
         let not_xz_data = vec![0x00, 0x01, 0x02, 0x03, 0x04, 0x05];
         assert!(!installer.is_tar_xz_archive(&not_xz_data));
+    }
+
+    #[test]
+    #[serial]
+    fn test_release_deserialization_with_prerelease() {
+        let json = r#"{
+            "tag_name": "v1.0.0",
+            "prerelease": false,
+            "assets": []
+        }"#;
+        let release: Result<Release, _> = serde_json::from_str(json);
+        assert!(release.is_ok());
+        let release = release.unwrap();
+        assert_eq!(release.tag_name, "v1.0.0");
+        assert!(!release.prerelease);
+    }
+
+    #[test]
+    #[serial]
+    fn test_release_deserialization_with_prerelease_true() {
+        let json = r#"{
+            "tag_name": "v1.0.0-rc1",
+            "prerelease": true,
+            "assets": []
+        }"#;
+        let release: Result<Release, _> = serde_json::from_str(json);
+        assert!(release.is_ok());
+        let release = release.unwrap();
+        assert_eq!(release.tag_name, "v1.0.0-rc1");
+        assert!(release.prerelease);
     }
 }
