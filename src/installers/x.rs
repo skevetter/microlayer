@@ -29,9 +29,14 @@ pub fn execute(input: &RunConfig) -> Result<()> {
     let pkgx_dir = _temp_dir.path().join("x").join("pkgx");
     let pantry_dir = _temp_dir.path().join("x").join("pantry");
 
-    // Set PKGX_DIR and PKGX_PANTRY_DIR for for pantry isolation
-    // TODO: Avoid modifying global state. Environment variables are read
-    // at pkgx::resolve_tool_to_project
+    // Set PKGX_DIR and PKGX_PANTRY_DIR for pantry isolation.
+    // These environment variables are read by libpkgx::config::Config::new()
+    // in pkgx::resolve_tool_to_project and also passed to child processes.
+    //
+    // Safety: Setting environment variables is only unsafe in multi-threaded contexts
+    // due to potential data races. This code runs early in the execution path before
+    // spawning additional threads, and we only set these variables if they're not
+    // already set, making this operation safe in our single-threaded initialization context.
     if std::env::var("PKGX_DIR").is_err() {
         unsafe {
             std::env::set_var("PKGX_DIR", &pkgx_dir);

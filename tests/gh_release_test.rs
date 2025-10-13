@@ -597,3 +597,20 @@ fn test_xz_extraction_handles_empty_data() {
         stderr
     );
 }
+
+#[test]
+#[serial]
+fn test_exclude_prerelease_flag_exists() {
+    // Test that the exclude-prerelease flag is recognized
+    let output = run_picolayer(&[
+        "gh-release",
+        "--help",
+    ]);
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("--exclude-prerelease"),
+        "Should have --exclude-prerelease flag in help output"
+    );
+}
+
