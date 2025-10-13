@@ -342,18 +342,15 @@ pub fn escalate_with_config(config: &EscalationConfig) -> Result<PrivilegeLevel>
         PrivilegeLevel::User => {
             debug!("Escalating privileges via sudo");
 
-            // Check if sudo is available before attempting
             if !is_sudo_available() {
                 return Err(PrivilegeError::SudoNotAvailable.into());
             }
 
-            // Check if user can use sudo
             if !can_use_sudo() {
                 return Err(PrivilegeError::EscalationFailed.into());
             }
 
             restart_with_sudo(config)?;
-            // This line should never be reached as restart_with_sudo calls process::exit
             unreachable!("restart_with_sudo should not return")
         }
     }
