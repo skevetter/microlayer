@@ -759,14 +759,8 @@ mod distro_tests {
 // ---------------------------------------------------
 
 #[allow(dead_code)]
-pub fn copy_files(src: &Path, dest: &Path) -> Result<()> {
-    match utils::filesystem::atomic_copy_dir(Path::new(src), dest) {
-        Ok(_) => {}
-        Err(_) => {
-            return Err(anyhow::anyhow!("Copy operation failed"));
-        }
-    }
-    Ok(())
+pub fn copy_files(src: &Path, dest: &Path) -> Result<(), fs_extra::error::Error> {
+    utils::filesystem::atomic_copy_dir(Path::new(src), dest)
 }
 
 #[cfg(test)]
