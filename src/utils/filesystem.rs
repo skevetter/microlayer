@@ -22,6 +22,7 @@ impl std::fmt::Display for Error {
 }
 
 impl Error {
+    #[allow(dead_code)]
     pub fn kind(&self) -> Option<std::io::ErrorKind> {
         match self {
             Error::Io(e) => Some(e.kind()),
@@ -42,7 +43,7 @@ impl std::error::Error for Error {
 
 /// Check if two directories are different; returns true if they differ
 /// source: https://github.com/assert-rs/dir-diff/blob/master/src/lib.rs
-pub fn is_dissimilar_dirs<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> Result<bool, Error> {
+pub fn is_different<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> Result<bool, Error> {
     let mut a_walker = walk_dir(p)?;
     let mut b_walker = walk_dir(q)?;
 
@@ -57,15 +58,18 @@ pub fn is_dissimilar_dirs<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> Result<
         {
             info!("Difference found at {:?} and {:?}", a.path(), b.path());
             info!(
-                "A: type={:?}, name={:?}",
+                "A: type={:?}, name={:?}, depth={}",
                 a.file_type(),
-                a.file_name().to_string_lossy()
+                a.file_name().to_string_lossy(),
+                a.depth()
             );
             info!(
-                "B: type={:?}, name={:?}",
+                "B: type={:?}, name={:?}, depth={}",
                 b.file_type(),
-                b.file_name().to_string_lossy()
+                b.file_name().to_string_lossy(),
+                b.depth()
             );
+            return Ok(true);
         }
     }
 
@@ -123,7 +127,7 @@ pub fn atomic_copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(
     fs_extra::dir::create_all(q, true)?;
     fs_extra::dir::copy(p, q, &fs_extra::dir::CopyOptions::new().content_only(true))?;
 
-    if let Ok(true) = is_dissimilar_dirs(p, q) {
+    if let Ok(true) = is_different(p, q) {
         return Err(fs_extra::error::Error::new(
             fs_extra::error::ErrorKind::Other,
             "Source and destination differ",
@@ -136,11 +140,10 @@ pub fn atomic_copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::ErrorKind;
 
     #[test]
     fn test_display() {
-        use std::io::ErrorKind;
-
         assert_eq!(
             format!(
                 "{}",
@@ -152,21 +155,23 @@ mod tests {
 
     #[test]
     fn test_is_dissimilar_dirs() {
+        env_logger::builder().is_test(true).try_init().ok();
+
         let dir1 = tempfile::tempdir().unwrap();
         let dir2 = tempfile::tempdir().unwrap();
 
         std::fs::write(dir1.path().join("file1.txt"), b"Hello").unwrap();
         std::fs::write(dir2.path().join("file1.txt"), b"Hello").unwrap();
 
-        assert_eq!(is_dissimilar_dirs(dir1.path(), dir2.path()).unwrap(), false);
+        assert_eq!(is_different(dir1.path(), dir2.path()).unwrap(), false);
 
         std::fs::write(dir2.path().join("file2.txt"), b"World").unwrap();
 
-        assert_eq!(is_dissimilar_dirs(dir1.path(), dir2.path()).unwrap(), true);
+        assert_eq!(is_different(dir1.path(), dir2.path()).unwrap(), true);
 
         std::fs::write(dir1.path().join("file2.txt"), b"World!").unwrap();
 
-        assert_eq!(is_dissimilar_dirs(dir1.path(), dir2.path()).unwrap(), true);
+        assert_eq!(is_different(dir1.path(), dir2.path()).unwrap(), true);
     }
 
     #[test]
@@ -193,7 +198,7 @@ mod tests {
             std::fs::read(dir2.path().join("subdir").join("file1.txt")).unwrap(),
             b"Hello"
         );
-        assert_eq!(is_dissimilar_dirs(dir1.path(), dir2.path()).unwrap(), false);
+        assert_eq!(is_different(dir1.path(), dir2.path()).unwrap(), false);
     }
 
     #[test]
