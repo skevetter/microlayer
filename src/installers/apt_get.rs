@@ -188,9 +188,7 @@ fn apt_purge(packages: &[String]) -> std::process::Command {
 }
 
 fn dpkg() -> std::process::Command {
-    let mut cmd = std::process::Command::new("");
-    cmd.arg("dpkg");
-    cmd
+    std::process::Command::new("dpkg")
 }
 
 #[cfg(test)]

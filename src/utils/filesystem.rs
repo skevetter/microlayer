@@ -56,20 +56,16 @@ pub fn is_dissimilar_dirs<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> Result<
             || (a.file_type().is_file() && std::fs::read(a.path())? != std::fs::read(b.path())?)
         {
             info!("Difference found at {:?} and {:?}", a.path(), b.path());
-            if a.file_type().is_file() && b.file_type().is_file() {
-                let a_content = std::fs::read(a.path())?;
-                let b_content = std::fs::read(b.path())?;
-                if a_content != b_content {
-                    info!(
-                        "File contents differ: {} bytes vs {} bytes",
-                        a_content.len(),
-                        b_content.len()
-                    );
-                }
-            } else {
-                info!("File types or names differ");
-            }
-            return Ok(true);
+            info!(
+                "A: type={:?}, name={:?}",
+                a.file_type(),
+                a.file_name().to_string_lossy()
+            );
+            info!(
+                "B: type={:?}, name={:?}",
+                b.file_type(),
+                b.file_name().to_string_lossy()
+            );
         }
     }
 
