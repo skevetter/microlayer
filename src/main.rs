@@ -1,4 +1,3 @@
-mod config;
 mod installers;
 mod utils;
 
@@ -144,7 +143,6 @@ fn main() -> Result<()> {
     utils::logging::init_logging().context("Failed to initialize logging")?;
     info!("Starting picolayer");
     let cli = Cli::parse();
-    //let _lock = utils::locking::acquire_lock().context("Failed to acquire lock")?;
 
     match cli.command {
         Commands::AptGet {

@@ -12,7 +12,7 @@ default = []
 oci-distribution = ["dep:oci-client"]
 
 # Use sudo to run tests that may require elevated privileges (https://github.com/rust-lang/cargo/issues/5999)
-# environment variable alternative: CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER = 'sudo -E'
+# environment variable alternative: export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="sudo -E"
 # [target.x86_64-unknown-linux-gnu]
 # runner = 'sudo -E'
 
@@ -39,15 +39,12 @@ openssl = { version = "0.10", features = ["vendored"] }
 [dependencies]
 anyhow = "1.0.100"
 clap = { version = "4.5.48", features = ["derive"] }
-dirs = "6.0.0"
 env = "1.0.1"
 env_logger = "0.11"
 flate2 = "1.1.4"
-fs_extra = "1.3.0"
 hex = "0.4.3"
 hostname = "0.4.0"
 indicatif = "0.17"
-lazy_static = "1.5"
 libpkgx = "0.7.0"
 log = "0.4"
 oci-client = { version = "0.15.0", optional = true }
@@ -64,7 +61,6 @@ serde_json = "1.0"
 sha2 = "0.10.9"
 tar = "0.4.44"
 tempfile = "3.23.0"
-thiserror = "2.0.17"
 tokio = { version = "1.47.1", features = ["rt", "rt-multi-thread"] }
 uuid = { version = "1.11.0", features = ["v4"] }
 walkdir = "2.5.0"

@@ -1,13 +1,9 @@
-use crate::config;
-use crate::utils::os;
+use crate::utils;
 use anyhow::{Context, Result};
 use log::{debug, info, warn};
-use std::path::Path;
-use tempfile::TempDir;
 
 const PPA_SUPPORT_PACKAGES: &[&str] = &["software-properties-common"];
 const PPA_SUPPORT_PACKAGES_DEBIAN: &[&str] = &["python3-launchpadlib"];
-const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
 
 /// Install packages using apt-get with optional PPAs
 pub fn install(
@@ -16,27 +12,15 @@ pub fn install(
     force_ppas_on_non_ubuntu: bool,
 ) -> Result<()> {
     anyhow::ensure!(
-        os::is_debian_like() && which::which("apt-get").is_ok(),
+        utils::os_detect::is_debian_like() && which::which("apt-get").is_ok(),
         "apt-get should be used on Debian-like distributions (Debian, Ubuntu, etc.)"
     );
 
     let mut ppas = ppas.map(|p| p.to_vec()).unwrap_or_default();
-    if !ppas.is_empty() && !os::is_ubuntu() && !force_ppas_on_non_ubuntu {
+    if !ppas.is_empty() && !utils::os_detect::is_ubuntu() && !force_ppas_on_non_ubuntu {
         warn!("PPAs are ignored on non-Ubuntu distros!");
         info!("Use --force-ppas-on-non-ubuntu to include them anyway.");
         ppas.clear();
-    }
-
-    let temp_dir = TempDir::with_prefix(config::PICO_CONFIG.temp_dir_prefix)
-        .context("Failed to create temp directory")?;
-    let cache_backup = temp_dir.path().join("apt_get");
-    debug!("Backup path {:?}", cache_backup);
-
-    match os::copy_files(Path::new(APT_LISTS_DIR), &cache_backup) {
-        Ok(_) => {}
-        Err(e) => {
-            anyhow::bail!("Failed to back up apt lists: {}", e);
-        }
     }
 
     debug!("Updating apt repositories");
@@ -79,22 +63,6 @@ pub fn install(
         .map(|o| debug!("Apt clean output: {:?}", o))
         .context("Failed to clean apt cache")?;
 
-    match os::copy_files(&cache_backup, Path::new(APT_LISTS_DIR)) {
-        Ok(_) => {}
-        Err(e) => {
-            anyhow::bail!("Failed to restore apt lists from backup: {}", e);
-        }
-    }
-
-    if temp_dir.path().exists() {
-        anyhow::ensure!(
-            temp_dir.close().is_ok(),
-            "Temporary directory could not be deleted"
-        );
-    } else {
-        debug!("Temporary directory is deleted");
-    }
-
     Ok(())
 }
 
@@ -113,7 +81,7 @@ pub fn add_ppas(ppas: &[String]) -> Result<(Vec<String>, Vec<String>)> {
         })
         .collect();
 
-    let required_packages: Vec<&str> = if os::is_ubuntu() {
+    let required_packages: Vec<&str> = if utils::os_detect::is_ubuntu() {
         PPA_SUPPORT_PACKAGES.to_vec()
     } else {
         PPA_SUPPORT_PACKAGES
@@ -157,7 +125,9 @@ pub fn add_ppas(ppas: &[String]) -> Result<(Vec<String>, Vec<String>)> {
 }
 
 fn apt_get() -> std::process::Command {
-    std::process::Command::new("apt-get")
+    let mut cmd = std::process::Command::new("sudo");
+    cmd.arg("apt-get");
+    cmd
 }
 
 fn apt_install(packages: &[String]) -> std::process::Command {

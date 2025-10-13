@@ -10,8 +10,7 @@ use serial_test::serial;
 #[cfg(target_os = "linux")]
 fn test_apt_get_installation() {
     // Perform update before installing any package to ensure lists are populated
-    std::process::Command::new("sudo")
-        .arg("apt-get")
+    std::process::Command::new("apt-get")
         .arg("update")
         .status()
         .expect("Failed to run apt-get update");

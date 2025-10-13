@@ -1,27 +1,13 @@
-use crate::config;
-use crate::utils::os;
+use crate::utils;
 use anyhow::{Context, Result};
 use log::debug;
-use std::path::Path;
-use tempfile::TempDir;
-
-const APK_CACHE_DIR: &str = "/var/cache/apk";
 
 /// Install packages using apk
 pub fn install(packages: &[String]) -> Result<()> {
     anyhow::ensure!(
-        os::is_alpine(),
+        utils::os_detect::is_alpine(),
         "apk should be used on Alpine Linux distribution"
     );
-
-    let temp_dir = TempDir::with_prefix(config::PICO_CONFIG.temp_dir_prefix)
-        .context("Failed to create temp directory")?;
-    let cache_backup = temp_dir.path().join("apk");
-    debug!("Backup path {:?}", cache_backup);
-
-    if os::copy_files(Path::new(APK_CACHE_DIR), &cache_backup).is_err() {
-        anyhow::bail!("Failed to back up apk cache");
-    }
 
     debug!("Updating apk repositories");
     apk_update()
@@ -41,24 +27,13 @@ pub fn install(packages: &[String]) -> Result<()> {
         .map(|o| debug!("Apk clean output: {:?}", o))
         .context("Failed to clean apk cache")?;
 
-    if os::copy_files(&cache_backup, Path::new(APK_CACHE_DIR)).is_err() {
-        anyhow::bail!("Failed to restore apk cache from backup");
-    }
-
-    if temp_dir.path().exists() {
-        anyhow::ensure!(
-            temp_dir.close().is_ok(),
-            "Temporary directory could not be deleted"
-        );
-    } else {
-        debug!("Temporary directory is deleted");
-    }
-
     Ok(())
 }
 
 fn apk() -> std::process::Command {
-    std::process::Command::new("apk")
+    let mut cmd = std::process::Command::new("sudo");
+    cmd.arg("apk");
+    cmd
 }
 
 fn apk_clean() -> std::process::Command {
