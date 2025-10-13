@@ -119,12 +119,7 @@ pub fn add_ppas(ppas: &[String]) -> Result<(Vec<String>, Vec<String>)> {
     for pkg in required_packages {
         let status = dpkg().arg("-s").arg(pkg).status().map(|o| o.success())?;
 
-        if !status
-            && std::process::Command::new("which")
-                .arg(pkg)
-                .status()
-                .map(|o| o.success())?
-        {
+        if !status && which::which(pkg).is_err() {
             apt_install(&[pkg.to_string()])
                 .status()
                 .context("Failed to install packages required for PPA support")?;
