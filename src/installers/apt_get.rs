@@ -1,5 +1,5 @@
+use crate::config;
 use crate::utils::os;
-use crate::{config, utils};
 use anyhow::{Context, Result};
 use log::{debug, info, warn};
 use std::path::Path;
@@ -20,8 +20,6 @@ pub fn install(
         "apt-get should be used on Debian-like distributions (Debian, Ubuntu, etc.)"
     );
 
-    utils::os::ensure_sudo().context("Failed to obtain sudo privileges")?;
-
     let mut ppas = ppas.map(|p| p.to_vec()).unwrap_or_default();
     if !ppas.is_empty() && !os::is_ubuntu() && !force_ppas_on_non_ubuntu {
         warn!("PPAs are ignored on non-Ubuntu distros!");
@@ -34,8 +32,11 @@ pub fn install(
     let cache_backup = temp_dir.path().join("apt_get");
     debug!("Backup path {:?}", cache_backup);
 
-    if os::copy_files(Path::new(APT_LISTS_DIR), &cache_backup).is_err() {
-        anyhow::bail!("Failed to back up apt lists");
+    match os::copy_files(Path::new(APT_LISTS_DIR), &cache_backup) {
+        Ok(_) => {}
+        Err(e) => {
+            anyhow::bail!("Failed to back up apt lists: {}", e);
+        }
     }
 
     debug!("Updating apt repositories");
@@ -78,10 +79,11 @@ pub fn install(
         .map(|o| debug!("Apt clean output: {:?}", o))
         .context("Failed to clean apt cache")?;
 
-    utils::os::ensure_sudo().context("Failed to obtain sudo privileges")?;
-
-    if os::copy_files(&cache_backup, Path::new(APT_LISTS_DIR)).is_err() {
-        anyhow::bail!("Failed to restore apt lists from backup");
+    match os::copy_files(&cache_backup, Path::new(APT_LISTS_DIR)) {
+        Ok(_) => {}
+        Err(e) => {
+            anyhow::bail!("Failed to restore apt lists from backup: {}", e);
+        }
     }
 
     if temp_dir.path().exists() {
