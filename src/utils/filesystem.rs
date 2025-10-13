@@ -66,6 +66,8 @@ pub fn is_dissimilar_dirs<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> Result<
                         b_content.len()
                     );
                 }
+            } else {
+                info!("File types or names differ");
             }
             return Ok(true);
         }
