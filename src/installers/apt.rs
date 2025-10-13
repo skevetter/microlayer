@@ -100,7 +100,7 @@ fn apt_clean() -> std::process::Command {
 }
 
 fn apt_remove_ppas(ppas: &[String]) -> std::process::Command {
-    let mut cmd = apt();
+    let mut cmd = std::process::Command::new("sudo");
     cmd.arg("add-apt-repository")
         .arg("-y")
         .arg("--remove")

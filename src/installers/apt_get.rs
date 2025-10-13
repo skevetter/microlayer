@@ -146,7 +146,9 @@ fn apt_update() -> std::process::Command {
 }
 
 fn apt_add_repository() -> std::process::Command {
-    std::process::Command::new("add-apt-repository")
+    let mut cmd = std::process::Command::new("sudo");
+    cmd.arg("add-apt-repository");
+    cmd
 }
 
 fn apt_remove_ppas(ppas: &[String]) -> std::process::Command {
@@ -165,7 +167,9 @@ fn apt_purge(packages: &[String]) -> std::process::Command {
 }
 
 fn dpkg() -> std::process::Command {
-    std::process::Command::new("dpkg")
+    let mut cmd = std::process::Command::new("sudo");
+    cmd.arg("dpkg");
+    cmd
 }
 
 #[cfg(test)]
