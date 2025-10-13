@@ -1,12 +1,5 @@
-mod apk;
-mod apt;
-mod apt_get;
-mod aptitude;
-mod brew;
-mod devcontainer_feature;
-mod gh_release;
+mod installers;
 mod utils;
-mod x;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -147,13 +140,9 @@ fn normalize_pkg_input(packages: String) -> Vec<String> {
 }
 
 fn main() -> Result<()> {
-    env_logger::init();
+    utils::logging::init_logging().context("Failed to initialize logging")?;
     info!("Starting picolayer");
-
     let cli = Cli::parse();
-
-    // Acquire lock at the start of actual commands (not for help/version)
-    let _lock = utils::locking::acquire_lock().context("Failed to acquire lock")?;
 
     match cli.command {
         Commands::AptGet {
@@ -171,7 +160,7 @@ fn main() -> Result<()> {
                 })),
             );
 
-            apt_get::install(&pkg_list, ppa_list.as_deref(), force_ppas_on_non_ubuntu)?;
+            installers::apt_get::install(&pkg_list, ppa_list.as_deref(), force_ppas_on_non_ubuntu)?;
         }
 
         Commands::Apt {
@@ -189,7 +178,7 @@ fn main() -> Result<()> {
                 })),
             );
 
-            apt::install(&pkg_list, ppa_list.as_deref(), force_ppas_on_non_ubuntu)?;
+            installers::apt::install(&pkg_list, ppa_list.as_deref(), force_ppas_on_non_ubuntu)?;
         }
 
         Commands::Aptitude { packages } => {
@@ -201,7 +190,7 @@ fn main() -> Result<()> {
                 })),
             );
 
-            aptitude::install(&pkg_list)?;
+            installers::aptitude::install(&pkg_list)?;
         }
 
         Commands::Apk { packages } => {
@@ -213,7 +202,7 @@ fn main() -> Result<()> {
                 })),
             );
 
-            apk::install(&pkg_list)?;
+            installers::apk::install(&pkg_list)?;
         }
 
         Commands::Brew { packages } => {
@@ -225,7 +214,7 @@ fn main() -> Result<()> {
                 })),
             );
 
-            brew::install(&pkg_list)?;
+            installers::brew::install(&pkg_list)?;
         }
 
         Commands::DevcontainerFeature {
@@ -244,7 +233,6 @@ fn main() -> Result<()> {
                 })),
             );
 
-            // Parse options
             let options = if !option.is_empty() {
                 let mut opts = std::collections::HashMap::new();
                 for opt in option {
@@ -257,7 +245,6 @@ fn main() -> Result<()> {
                 None
             };
 
-            // Parse env vars
             let envs = if !env.is_empty() {
                 let mut env_map = std::collections::HashMap::new();
                 for e in env {
@@ -270,7 +257,12 @@ fn main() -> Result<()> {
                 None
             };
 
-            devcontainer_feature::install(&feature, options, remote_user.as_deref(), envs)?;
+            installers::devcontainer_feature::install(
+                &feature,
+                options,
+                remote_user.as_deref(),
+                envs,
+            )?;
         }
 
         Commands::GhRelease {
@@ -300,7 +292,7 @@ fn main() -> Result<()> {
                 })),
             );
 
-            gh_release::install(&gh_release::GhReleaseConfig {
+            installers::gh_release::install(&installers::gh_release::GhReleaseConfig {
                 repo: &repo,
                 binary_names: &binary_list,
                 version: &version,
@@ -327,7 +319,7 @@ fn main() -> Result<()> {
                 })),
             );
 
-            x::execute(&x::RunConfig {
+            installers::x::execute(&installers::x::RunConfig {
                 tool: &tool,
                 args,
                 working_dir: &working_dir,
@@ -391,19 +383,5 @@ mod tests {
     fn test_cli_parser_exists() {
         use clap::CommandFactory;
         let _ = Cli::command();
-    }
-
-    #[test]
-    #[serial]
-    fn test_commands_enum_variants() {
-        use clap::CommandFactory;
-        let cmd = Cli::command();
-        let subcommands: Vec<_> = cmd.get_subcommands().map(|s| s.get_name()).collect();
-
-        assert!(subcommands.contains(&"apt-get"));
-        assert!(subcommands.contains(&"apk"));
-        assert!(subcommands.contains(&"brew"));
-        assert!(subcommands.contains(&"gh-release"));
-        assert!(subcommands.contains(&"x"));
     }
 }

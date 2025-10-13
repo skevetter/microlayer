@@ -283,7 +283,7 @@ impl<'a> AssetInstaller<'a> {
     }
 
     fn install(&self, asset: &Asset, binary_names: &[String], bin_location: &str) -> Result<()> {
-        info!("Downloading asset...");
+        info!("Downloading asset");
         let archive_data = self.download_asset(asset)?;
 
         info!("Extracting binaries: {}", binary_names.join(", "));
@@ -455,7 +455,7 @@ impl<'a> AssetVerifier<'a> {
     }
 
     fn verify(&self, assets: &[Asset], asset: &Asset, gpg_key: Option<&str>) -> Result<()> {
-        info!("Verifying asset...");
+        info!("Verifying asset");
 
         let checksum_asset = self.find_checksum_asset(assets, asset)?;
 
@@ -467,13 +467,13 @@ impl<'a> AssetVerifier<'a> {
     }
 
     fn verify_with_checksum_text(&self, asset: &Asset, checksum_text: &str) -> Result<()> {
-        info!("Verifying asset with provided checksum text...");
+        info!("Verifying asset with provided checksum text");
 
         // Expects checksum text format: "algorithm:hash"
         let parts: Vec<&str> = checksum_text.splitn(2, ':').collect();
         if parts.len() != 2 {
             anyhow::bail!(
-                "Invalid checksum text format. Expected 'algorithm:hash' (e.g., 'sha256:abc123...')"
+                "Invalid checksum text format. Expected 'algorithm:hash' (e.g., 'sha256:abc123')"
             );
         }
 
@@ -484,7 +484,7 @@ impl<'a> AssetVerifier<'a> {
             anyhow::bail!("Only sha256 algorithm is currently supported");
         }
 
-        info!("Downloading asset for verification...");
+        info!("Downloading asset for verification");
         let asset_data = self.download_asset(asset)?;
         let computed_hash = compute_sha256(&asset_data);
 
@@ -553,7 +553,7 @@ impl<'a> AssetVerifier<'a> {
         gpg_key: Option<&str>,
     ) -> Result<()> {
         if let Some(key_content) = gpg_key {
-            info!("Verifying GPG signature...");
+            info!("Verifying GPG signature");
             GpgVerifier::new(self.client).verify(asset, signature_asset, key_content)
         } else {
             warn!("Found signature file but no GPG key provided");
@@ -568,7 +568,7 @@ impl<'a> AssetVerifier<'a> {
         checksum_asset: &Asset,
         _assets: &[Asset],
     ) -> Result<()> {
-        info!("Verifying SHA256 checksum...");
+        info!("Verifying SHA256 checksum");
         info!("Checksum file: {}", checksum_asset.name);
 
         let asset_data = self.download_asset(asset)?;
@@ -651,16 +651,16 @@ impl<'a> GpgVerifier<'a> {
         use pgp::composed::{Deserializable, DetachedSignature};
         use std::io::Cursor;
 
-        info!("Downloading asset for verification...");
+        info!("Downloading asset for verification");
         let asset_data = self.download_data(&asset.browser_download_url)?;
 
-        info!("Downloading signature file...");
+        info!("Downloading signature file");
         let sig_data = self.download_data(&signature_asset.browser_download_url)?;
 
-        info!("Loading GPG public key...");
+        info!("Loading GPG public key");
         let public_key = self.load_public_key(gpg_key_content)?;
 
-        info!("Parsing signature...");
+        info!("Parsing signature");
         let signature = if sig_data.starts_with(b"-----BEGIN PGP SIGNATURE-----") {
             // ASCII-armored signature
             let sig_str =
@@ -674,7 +674,7 @@ impl<'a> GpgVerifier<'a> {
                 .context("Failed to parse binary signature")?
         };
 
-        info!("Verifying signature...");
+        info!("Verifying signature");
         signature
             .verify(&public_key, &asset_data[..])
             .context("GPG signature verification failed")?;
@@ -703,7 +703,7 @@ impl<'a> GpgVerifier<'a> {
 
         let key_data = if key_content.starts_with("http://") || key_content.starts_with("https://")
         {
-            info!("Downloading GPG public key from URL...");
+            info!("Downloading GPG public key from URL");
             let response = self
                 .client
                 .get(key_content)

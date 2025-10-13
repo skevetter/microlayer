@@ -148,6 +148,7 @@ pub fn map_tool_to_project(tool_name: &str, conn: &rusqlite::Connection) -> Resu
 
 /// Resolve a tool name and version spec to a project name and tool spec
 pub fn resolve_tool_to_project(tool_name: &str, version_spec: &str) -> Result<(String, String)> {
+    // TODO: Make this variable mutable and update variables to set directory paths
     let config = Config::new().context("Failed to initialize libpkgx config")?;
     std::fs::create_dir_all(config.pantry_db_file.parent().unwrap())?;
     let mut conn = rusqlite::Connection::open(&config.pantry_db_file)?;
