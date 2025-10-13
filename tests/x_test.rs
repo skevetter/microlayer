@@ -1,3 +1,5 @@
+mod common;
+
 use anyhow::Result;
 use common::run_picolayer;
 use serial_test::serial;

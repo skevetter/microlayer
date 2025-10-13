@@ -2372,6 +2372,7 @@ dependencies = [
  "anyhow",
  "clap",
  "dirs",
+ "dirs-next",
  "env",
  "env_logger",
  "flate2",

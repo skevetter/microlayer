@@ -121,21 +121,6 @@ pub fn check_privilege_level() -> PrivilegeLevel {
 ///
 /// Returns `PrivilegeError::RootRequired` if the process cannot obtain root privileges,
 /// or other errors if the escalation process fails.
-///
-/// # Example
-///
-/// ```no_run
-/// use your_crate::sudo::ensure_sudo;
-///
-/// fn create_system_file() -> anyhow::Result<()> {
-///     // Ensure we have root privileges before proceeding
-///     ensure_sudo()?;
-///
-///     // Now we can safely perform root operations
-///     std::fs::write("/etc/myapp/config", "content")?;
-///     Ok(())
-/// }
-/// ```
 pub fn ensure_sudo() -> Result<()> {
     match check_privilege_level() {
         PrivilegeLevel::Root => {
@@ -163,21 +148,6 @@ pub fn ensure_sudo() -> Result<()> {
 /// # Arguments
 ///
 /// * `config` - Configuration for the escalation process
-///
-/// # Example
-///
-/// ```norun
-/// use your_crate::sudo::{ensure_sudo_with_config, EscalationConfig};
-///
-/// fn main() -> anyhow::Result<()> {
-///     let config = EscalationConfig::new()
-///         .with_env_prefixes(&["CARGO_", "MY_APP_"]);
-///
-///     ensure_sudo_with_config(&config)?;
-///     // Now running with root privileges
-///     Ok(())
-/// }
-/// ```
 pub fn ensure_sudo_with_config(config: &EscalationConfig) -> Result<()> {
     match check_privilege_level() {
         PrivilegeLevel::Root => {
@@ -264,24 +234,6 @@ pub fn can_use_sudo_at_path(sudo_path: &str) -> bool {
 /// # Errors
 ///
 /// Returns an error if root privileges cannot be obtained.
-///
-/// # Example
-///
-/// ```norun
-/// use your_crate::sudo::require_sudo_available;
-///
-/// fn main() -> anyhow::Result<()> {
-///     // Check early if we can get root privileges
-///     require_sudo_available()?;
-///
-///     // ... do other setup work ...
-///
-///     // Later, when we actually need root:
-///     ensure_sudo()?;
-///     // perform root operations
-///     Ok(())
-/// }
-/// ```
 pub fn require_sudo_available() -> Result<()> {
     match check_privilege_level() {
         PrivilegeLevel::Root | PrivilegeLevel::Suid => {
@@ -352,18 +304,6 @@ pub fn validate_sudo_setup() -> Result<()> {
 ///
 /// Returns an error if privilege escalation fails or if the process
 /// cannot be restarted with sudo.
-///
-/// # Example
-///
-/// ```norun
-/// use your_crate::privilege::{escalate_if_needed, PrivilegeLevel};
-///
-/// fn main() -> anyhow::Result<()> {
-///     let level = escalate_if_needed()?;
-///     println!("Running with privilege level: {:?}", level);
-///     Ok(())
-/// }
-/// ```
 pub fn escalate_if_needed() -> Result<PrivilegeLevel> {
     escalate_with_config(&EscalationConfig::new())
 }
@@ -385,22 +325,6 @@ pub fn escalate_if_needed() -> Result<PrivilegeLevel> {
 ///
 /// Returns an error if privilege escalation fails, sudo is not available,
 /// or the process cannot be restarted.
-///
-/// # Example
-///
-/// ```no_run
-/// use your_crate::privilege::{escalate_with_config, EscalationConfig};
-///
-/// fn main() -> anyhow::Result<()> {
-///     let config = EscalationConfig::new()
-///         .with_env_prefixes(&["CARGO_", "MY_APP_"])
-///         .preserve_backtrace(true);
-///
-///     escalate_with_config(&config)?;
-///     // Now running with elevated privileges
-///     Ok(())
-/// }
-/// ```
 pub fn escalate_with_config(config: &EscalationConfig) -> Result<PrivilegeLevel> {
     let current_level = check_privilege_level();
     trace!("Current privilege level: {:?}", current_level);

@@ -1,3 +1,5 @@
+mod common;
+
 #[cfg(target_os = "linux")]
 use common::run_picolayer;
 #[cfg(target_os = "linux")]
