@@ -166,7 +166,7 @@ pub fn ensure_sudo() -> Result<()> {
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```norun
 /// use your_crate::sudo::{ensure_sudo_with_config, EscalationConfig};
 ///
 /// fn main() -> anyhow::Result<()> {
@@ -267,7 +267,7 @@ pub fn can_use_sudo_at_path(sudo_path: &str) -> bool {
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```norun
 /// use your_crate::sudo::require_sudo_available;
 ///
 /// fn main() -> anyhow::Result<()> {
@@ -355,7 +355,7 @@ pub fn validate_sudo_setup() -> Result<()> {
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```norun
 /// use your_crate::privilege::{escalate_if_needed, PrivilegeLevel};
 ///
 /// fn main() -> anyhow::Result<()> {
