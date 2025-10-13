@@ -1,5 +1,3 @@
-mod common;
-
 use common::run_picolayer;
 
 #[test]

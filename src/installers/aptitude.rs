@@ -1,73 +1,12 @@
 use crate::installers::apt_get;
-use crate::utils::{filesystem, os};
+use crate::utils::os;
+use crate::{config, utils};
 use anyhow::{Context, Result};
-use log::info;
-use std::fs;
+use log::debug;
 use std::path::Path;
 use tempfile::TempDir;
 
 const APT_LISTS_DIR: &str = "/var/lib/apt/lists";
-
-fn apt_get_install_aptitude() -> Result<()> {
-    apt_get::install(&["aptitude".to_string()], Some(&[]), false)
-        .context("Failed to install aptitude")?;
-    Ok(())
-}
-
-fn apt_update() -> std::process::Command {
-    let mut cmd = std::process::Command::new("sudo");
-    cmd.arg("aptitude").arg("update");
-    cmd
-}
-
-fn apt_clean() -> std::process::Command {
-    let mut cmd = std::process::Command::new("sudo");
-    cmd.arg("aptitude").arg("clean");
-    cmd
-}
-
-fn apt_backup_lists(cache_backup: &Path) -> Result<()> {
-    if !Path::new(APT_LISTS_DIR).exists() {
-        info!("No existing apt lists cache to back up");
-        return Ok(());
-    }
-
-    info!("Backing up apt lists cache to {:?}", cache_backup);
-    let mut cmd = std::process::Command::new("sudo");
-    cmd.arg("cp")
-        .arg("-p")
-        .arg("-R")
-        .arg(APT_LISTS_DIR)
-        .arg(cache_backup.to_str().unwrap())
-        .status()
-        .context("Failed to copy apt lists cache")?;
-
-    if let Ok(result) = filesystem::is_dissimilar_dirs(cache_backup, APT_LISTS_DIR)
-        && result
-    {
-        anyhow::bail!("backup differs from original");
-    }
-
-    Ok(())
-}
-
-fn apt_rm_cache() -> std::process::Command {
-    let mut cmd = std::process::Command::new("sudo");
-    cmd.arg("rm").arg("-rf").arg(APT_LISTS_DIR);
-    cmd
-}
-
-fn aptitude_install_packages(packages: &[String]) -> std::process::Command {
-    let mut cmd = std::process::Command::new("sudo");
-    cmd.arg("aptitude")
-        .arg("install")
-        .arg("-y")
-        .arg("--without-recommends");
-    for pkg in packages {
-        cmd.arg(pkg);
-    }
-    cmd
-}
 
 /// Install packages using aptitude
 pub fn install(packages: &[String]) -> Result<()> {
@@ -76,40 +15,82 @@ pub fn install(packages: &[String]) -> Result<()> {
         "aptitude should be used on Debian-like distributions (Debian, Ubuntu, etc.)"
     );
 
-    let temp_dir = TempDir::with_prefix("picolayer_").context("Failed to create temp directory")?;
+    utils::os::ensure_sudo().context("Failed to obtain sudo privileges")?;
+
+    let temp_dir = TempDir::with_prefix(config::PICO_CONFIG.temp_dir_prefix)
+        .context("Failed to create temp directory")?;
     let cache_backup = temp_dir.path().join("aptitude");
+    debug!("Backup path {:?}", cache_backup);
 
-    info!("Backing up existing apt lists cache");
-    apt_backup_lists(&cache_backup)?;
+    os::copy_files(Path::new(APT_LISTS_DIR), &cache_backup).context("Failed to copy apt lists")?;
 
-    info!("Updating aptitude repositories");
-    apt_update()
-        .status()
+    debug!("Updating aptitude repositories");
+    aptitude_update()
+        .output()
+        .map(|o| debug!("Aptitude update output: {:?}", o))
         .context("Failed to update aptitude repositories")?;
 
-    info!("Installing aptitude");
-    apt_get_install_aptitude().context("Failed to install aptitude")?;
+    debug!("Installing aptitude");
+    install_aptitude().context("Failed to install aptitude")?;
 
-    info!("Installing aptitude packages: {:?}", packages);
-    aptitude_install_packages(packages)
-        .status()
+    debug!("Installing aptitude packages: {:?}", packages);
+    aptitude_install(packages)
+        .output()
+        .map(|o| debug!("Aptitude install output: {:?}", o))
         .context("Failed to install packages with aptitude")?;
 
-    info!("Cleaning aptitude cache");
-    apt_clean()
+    debug!("Cleaning aptitude cache");
+    aptitude_clean()
         .status()
         .context("Failed to clean aptitude cache")?;
 
-    info!("Removing aptitude cache directory");
-    apt_rm_cache()
-        .status()
-        .context("Failed to remove aptitude cache")?;
+    os::copy_files(&cache_backup, Path::new(APT_LISTS_DIR))
+        .context("Failed to restore apt lists")?;
 
-    if cache_backup.exists() {
-        fs::rename(cache_backup, APT_LISTS_DIR).context("Failed to restore apt lists cache")?;
+    if temp_dir.path().exists() {
+        anyhow::ensure!(
+            temp_dir.close().is_ok(),
+            "Failed to remove temporary directory"
+        );
+    } else {
+        debug!("Temporary directory is deleted");
     }
 
     Ok(())
+}
+
+/// Installs the aptitude package using apt-get if not already installed
+fn install_aptitude() -> Result<()> {
+    if which::which("aptitude").is_err() {
+        apt_get::install(&["aptitude".to_string()], Some(&[]), false)
+            .context("Failed to install aptitude")?;
+    }
+    Ok(())
+}
+
+fn aptitude() -> std::process::Command {
+    std::process::Command::new("aptitude")
+}
+
+fn aptitude_update() -> std::process::Command {
+    let mut cmd = aptitude();
+    cmd.arg("update");
+    cmd
+}
+
+fn aptitude_clean() -> std::process::Command {
+    let mut cmd = aptitude();
+    cmd.arg("clean");
+    cmd
+}
+
+fn aptitude_install(packages: &[String]) -> std::process::Command {
+    let mut cmd = aptitude();
+    cmd.arg("install")
+        .arg("-y")
+        .arg("--without-recommends")
+        .args(packages);
+    cmd
 }
 
 #[cfg(test)]
@@ -121,6 +102,6 @@ mod tests {
     #[serial]
     fn test_aptitude() {
         let packages = vec!["curl".to_string()];
-        let _ = aptitude_install_packages(&packages);
+        let _ = aptitude_install(&packages);
     }
 }

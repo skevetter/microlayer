@@ -6,10 +6,11 @@ lazy_static::lazy_static! {
 
 /// Centralized configuration for picolayer program settings
 pub struct PicolayerConfig {
-    /// Base directory for temporary files
     #[allow(dead_code)]
+    /// Base directory for temporary files
     pub temp_dir_prefix: &'static str,
 
+    #[allow(dead_code)]
     /// Lock file directory
     pub lock_dir: &'static str,
 

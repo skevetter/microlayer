@@ -6,11 +6,16 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
+#[allow(dead_code)]
 const LOCK_FILE_NAME: &str = ".picolayer.lock";
+#[allow(dead_code)]
 const LOCK_TIMEOUT_SECS: u64 = 120; // 2 minutes
+#[allow(dead_code)]
 const LOCK_RETRY_DELAY_MS: u64 = 100;
+#[allow(dead_code)]
 const LOCK_MAX_RETRIES: u32 = 50;
 
+#[allow(dead_code)]
 /// Get the lock file path for pkgx operations
 fn get_lock_path() -> Result<PathBuf> {
     let lock_dir = PathBuf::from(config::PICO_CONFIG.lock_dir);
@@ -22,6 +27,7 @@ fn get_lock_path() -> Result<PathBuf> {
     Ok(lock_dir.join(LOCK_FILE_NAME))
 }
 
+#[allow(dead_code)]
 /// Check if a lock file is stale
 fn is_lock_stale(lock_path: &PathBuf) -> bool {
     if let Ok(metadata) = fs::metadata(lock_path)
@@ -34,6 +40,7 @@ fn is_lock_stale(lock_path: &PathBuf) -> bool {
     false
 }
 
+#[allow(dead_code)]
 /// Acquire a lock for pkgx operations
 pub fn acquire_lock() -> Result<PkgxLock> {
     let lock_path = get_lock_path()?;

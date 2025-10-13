@@ -1,5 +1,3 @@
-mod common;
-
 use common::{binary_exists, check_binary_version, is_transient_error, run_picolayer};
 use serial_test::serial;
 use std::path::Path;

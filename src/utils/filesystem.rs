@@ -96,63 +96,29 @@ impl From<walkdir::Error> for Error {
 
 /// Atomic copy directory from source to target
 #[allow(dead_code)]
-pub fn atomic_copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> Result<(), anyhow::Error> {
-    let a_base = p.as_ref();
-    let b_base = q.as_ref();
+pub fn atomic_copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(
+    p: P,
+    q: Q,
+) -> Result<(), fs_extra::error::Error> {
+    let p = p.as_ref();
+    let q = q.as_ref();
 
-    match fs_extra::dir::get_dir_content(a_base) {
-        Ok(_) => {
-            info!("Source directory exists and process has permissions to read content");
-        }
-        Err(err) if matches!(err.kind, fs_extra::error::ErrorKind::PermissionDenied) => {
-            anyhow::bail!("No read permissions for source directory {:?}", a_base);
-        }
-        Err(err) => {
-            return Err(anyhow::anyhow!(
-                "Failed to read source directory {:?} {}",
-                a_base,
-                err
-            ));
-        }
+    if !p.exists() {
+        return Err(fs_extra::error::Error::new(
+            fs_extra::error::ErrorKind::NotFound,
+            "Source directory not found",
+        ));
     }
 
-    match fs_extra::dir::create_all(b_base, true) {
-        Ok(_) => {
-            info!("Created target directory");
-        }
-        Err(err) if matches!(err.kind, fs_extra::error::ErrorKind::PermissionDenied) => {
-            anyhow::bail!("No read permissions for target directory");
-        }
-        Err(err) => {
-            return Err(anyhow::anyhow!(
-                "Failed to create target directory {:?}: {}",
-                b_base,
-                err
-            ));
-        }
-    }
+    fs_extra::dir::get_dir_content(p)?;
+    fs_extra::dir::create_all(q, true)?;
+    fs_extra::dir::copy(p, q, &fs_extra::dir::CopyOptions::new().content_only(true))?;
 
-    match fs_extra::dir::copy(
-        a_base,
-        b_base,
-        &fs_extra::dir::CopyOptions::new().content_only(true),
-    ) {
-        Ok(_) => {
-            info!("Copied {:?} -> {:?}", a_base, b_base);
-        }
-        Err(err) => {
-            return Err(anyhow::anyhow!(
-                "Failed to copy {:?} -> {:?} {}",
-                a_base,
-                b_base,
-                err
-            ));
-        }
-    }
-
-    if is_dissimilar_dirs(a_base, b_base)? {
-        fs_extra::dir::remove(b_base).ok();
-        anyhow::bail!("Source and target directories differ after copy");
+    if let Ok(true) = is_dissimilar_dirs(p, q) {
+        return Err(fs_extra::error::Error::new(
+            fs_extra::error::ErrorKind::Other,
+            "Source and destination differ",
+        ));
     }
 
     Ok(())

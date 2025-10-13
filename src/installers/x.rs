@@ -30,11 +30,18 @@ pub fn execute(input: &RunConfig) -> Result<()> {
     let pantry_dir = _temp_dir.path().join("x").join("pantry");
 
     // Set PKGX_DIR and PKGX_PANTRY_DIR for for pantry isolation
-    unsafe {
-        std::env::set_var("PKGX_DIR", &pkgx_dir);
+    // TODO: Avoid modifying global state. Environment variables are read
+    // at pkgx::resolve_tool_to_project
+    if std::env::var("PKGX_DIR").is_err() {
+        unsafe {
+            std::env::set_var("PKGX_DIR", &pkgx_dir);
+        }
     }
-    unsafe {
-        std::env::set_var("PKGX_PANTRY_DIR", &pantry_dir);
+
+    if std::env::var("PKGX_PANTRY_DIR").is_err() {
+        unsafe {
+            std::env::set_var("PKGX_PANTRY_DIR", &pantry_dir);
+        }
     }
 
     // Ensure directories exist
