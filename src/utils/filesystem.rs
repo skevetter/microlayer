@@ -107,6 +107,49 @@ impl From<walkdir::Error> for Error {
     }
 }
 
+#[allow(dead_code)]
+pub fn atomic_copy_dir_preserve_symlinks<P: AsRef<Path>, Q: AsRef<Path>>(
+    source: P,
+    dest: Q,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let source = source.as_ref();
+    let dest = dest.as_ref();
+
+    if !source.exists() {
+        return Err("Source directory not found".into());
+    }
+
+    std::fs::create_dir_all(dest)?;
+
+    for entry in WalkDir::new(source) {
+        let entry = entry?;
+        let path = entry.path();
+        let relative_path = path.strip_prefix(source)?;
+        let dest_path = dest.join(relative_path);
+
+        if path.is_symlink() {
+            let link_target = std::fs::read_link(path)?;
+            if let Some(parent) = dest_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::os::unix::fs::symlink(link_target, dest_path)?;
+        } else if path.is_dir() {
+            std::fs::create_dir_all(dest_path)?;
+        } else {
+            if let Some(parent) = dest_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::copy(path, dest_path)?;
+        }
+    }
+
+    if let Ok(true) = is_different(source, dest) {
+        return Err("Source and destination differ".into());
+    }
+
+    Ok(())
+}
+
 /// Atomic copy directory from source to target
 #[allow(dead_code)]
 pub fn atomic_copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(
@@ -125,7 +168,13 @@ pub fn atomic_copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(
 
     fs_extra::dir::get_dir_content(p)?;
     fs_extra::dir::create_all(q, true)?;
-    fs_extra::dir::copy(p, q, &fs_extra::dir::CopyOptions::new().content_only(true))?;
+    fs_extra::dir::copy(
+        p,
+        q,
+        &fs_extra::dir::CopyOptions::new()
+            .copy_inside(true)
+            .content_only(true),
+    )?;
 
     if let Ok(true) = is_different(p, q) {
         return Err(fs_extra::error::Error::new(

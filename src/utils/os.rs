@@ -759,8 +759,8 @@ mod distro_tests {
 // ---------------------------------------------------
 
 #[allow(dead_code)]
-pub fn copy_files(src: &Path, dest: &Path) -> Result<(), fs_extra::error::Error> {
-    utils::filesystem::atomic_copy_dir(Path::new(src), dest)
+pub fn copy_files(src: &Path, dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    utils::filesystem::atomic_copy_dir_preserve_symlinks(src, dest)
 }
 
 #[cfg(test)]

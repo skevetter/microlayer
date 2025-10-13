@@ -33,7 +33,9 @@ pub fn install(
     let cache_backup = temp_dir.path().join("apt");
     debug!("Backup path {:?}", cache_backup);
 
-    os::copy_files(Path::new(APT_LISTS_DIR), &cache_backup).context("Failed to copy apt lists")?;
+    if os::copy_files(Path::new(APT_LISTS_DIR), &cache_backup).is_err() {
+        anyhow::bail!("Failed to back up apt lists");
+    }
 
     debug!("Updating apt repositories");
     apt_update()
@@ -74,8 +76,9 @@ pub fn install(
         .map(|o| debug!("Apt clean output: {:?}", o))
         .context("Failed to clean apt cache")?;
 
-    os::copy_files(&cache_backup, Path::new(APT_LISTS_DIR))
-        .context("Failed to restore apt lists")?;
+    if os::copy_files(&cache_backup, Path::new(APT_LISTS_DIR)).is_err() {
+        anyhow::bail!("Failed to restore apt lists from backup");
+    }
 
     if temp_dir.path().exists() {
         anyhow::ensure!(

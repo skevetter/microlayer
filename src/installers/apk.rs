@@ -19,7 +19,9 @@ pub fn install(packages: &[String]) -> Result<()> {
     let cache_backup = temp_dir.path().join("apk");
     debug!("Backup path {:?}", cache_backup);
 
-    os::copy_files(Path::new(APK_CACHE_DIR), &cache_backup).context("Failed to copy apk cache")?;
+    if os::copy_files(Path::new(APK_CACHE_DIR), &cache_backup).is_err() {
+        anyhow::bail!("Failed to back up apk cache");
+    }
 
     debug!("Updating apk repositories");
     apk_update()
@@ -39,8 +41,9 @@ pub fn install(packages: &[String]) -> Result<()> {
         .map(|o| debug!("Apk clean output: {:?}", o))
         .context("Failed to clean apk cache")?;
 
-    os::copy_files(&cache_backup, Path::new(APK_CACHE_DIR))
-        .context("Failed to restore apk cache")?;
+    if os::copy_files(&cache_backup, Path::new(APK_CACHE_DIR)).is_err() {
+        anyhow::bail!("Failed to restore apk cache from backup");
+    }
 
     if temp_dir.path().exists() {
         anyhow::ensure!(

@@ -17,8 +17,9 @@ pub fn install(packages: &[String]) -> Result<()> {
     debug!("Backup path {:?}", cache_backup);
 
     let cache_dir = get_cache_dir().context("Failed to determine Homebrew cache directory")?;
-    os::copy_files(&cache_dir, &cache_backup).context("Failed to copy Homebrew cache")?;
-
+    if os::copy_files(&cache_dir, &cache_backup).is_err() {
+        anyhow::bail!("Failed to back up Homebrew cache");
+    }
     debug!("Updating Homebrew");
     brew_update()
         .output()
@@ -37,7 +38,9 @@ pub fn install(packages: &[String]) -> Result<()> {
         .map(|o| debug!("Brew cleanup output: {:?}", o))
         .context("Failed to clean up Homebrew cache")?;
 
-    os::copy_files(&cache_backup, &cache_dir).context("Failed to restore Homebrew cache")?;
+    if os::copy_files(&cache_backup, &cache_dir).is_err() {
+        anyhow::bail!("Failed to restore Homebrew cache from backup");
+    }
     if temp_dir.path().exists() {
         anyhow::ensure!(
             temp_dir.close().is_ok(),

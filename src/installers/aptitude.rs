@@ -22,7 +22,9 @@ pub fn install(packages: &[String]) -> Result<()> {
     let cache_backup = temp_dir.path().join("aptitude");
     debug!("Backup path {:?}", cache_backup);
 
-    os::copy_files(Path::new(APT_LISTS_DIR), &cache_backup).context("Failed to copy apt lists")?;
+    if os::copy_files(Path::new(APT_LISTS_DIR), &cache_backup).is_err() {
+        anyhow::bail!("Failed to back up aptitude lists");
+    }
 
     debug!("Updating aptitude repositories");
     aptitude_update()
@@ -44,8 +46,9 @@ pub fn install(packages: &[String]) -> Result<()> {
         .status()
         .context("Failed to clean aptitude cache")?;
 
-    os::copy_files(&cache_backup, Path::new(APT_LISTS_DIR))
-        .context("Failed to restore apt lists")?;
+    if os::copy_files(&cache_backup, Path::new(APT_LISTS_DIR)).is_err() {
+        anyhow::bail!("Failed to restore aptitude lists from backup");
+    }
 
     if temp_dir.path().exists() {
         anyhow::ensure!(
