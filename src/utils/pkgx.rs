@@ -25,7 +25,7 @@ impl PkgxConfig {
     fn get_config(&self) -> Result<Config> {
         let mut config = Config::new().context("Failed to initialize libpkgx config")?;
         config.pkgx_dir = PathBuf::from(&self.pkgx_dir);
-        config.pantry_db_file = PathBuf::from(&self.pantry_dir);
+        config.pantry_dir = PathBuf::from(&self.pantry_dir);
         Ok(config)
     }
 }

@@ -143,7 +143,7 @@ fn execute_with_pkgx_library(
     env_map: &[(String, String)],
     exec_env: &ExecutionEnvironment,
 ) -> Result<()> {
-    info!("Using pkgx library integration with virtual environment...");
+    info!("Using pkgx library integration with virtual environment");
 
     if args.is_empty() {
         anyhow::bail!("No arguments provided for tool: {}", tool_name);
