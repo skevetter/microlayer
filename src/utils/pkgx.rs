@@ -6,20 +6,44 @@ use libpkgx::{
 use log::{info, warn};
 use rusqlite::Connection;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
+
+pub struct PkgxConfig {
+    pkgx_dir: PathBuf,
+    pantry_dir: PathBuf,
+}
+
+impl PkgxConfig {
+    pub fn new(pkgx_dir: &str, pantry_dir: &str) -> Self {
+        Self {
+            pkgx_dir: PathBuf::from(pkgx_dir),
+            pantry_dir: PathBuf::from(pantry_dir),
+        }
+    }
+
+    fn get_config(&self) -> Result<Config> {
+        let mut config = Config::new().context("Failed to initialize libpkgx config")?;
+        config.pkgx_dir = PathBuf::from(&self.pkgx_dir);
+        config.pantry_dir = PathBuf::from(&self.pantry_dir);
+        Ok(config)
+    }
+}
 
 /// Resolve package dependencies using libpkgx
 pub fn resolve_package_with_libpkgx(
     dependencies: &[String],
+    pkgx_config: &PkgxConfig,
 ) -> Result<(HashMap<String, String>, Vec<libpkgx::types::Installation>)> {
     let rt = tokio::runtime::Runtime::new()
         .context("Failed to create Tokio runtime for libpkgx operations")?;
 
-    rt.block_on(async { resolve_dependencies_async(dependencies).await })
+    rt.block_on(async { resolve_dependencies_async(dependencies, pkgx_config).await })
 }
 
 async fn resolve_dependencies_async(
     dependencies: &[String],
+    pkgx_config: &PkgxConfig,
 ) -> Result<(HashMap<String, String>, Vec<libpkgx::types::Installation>)> {
     struct ToolProgressBar {
         bar: indicatif::ProgressBar,
@@ -48,7 +72,9 @@ async fn resolve_dependencies_async(
         }
     }
 
-    let config = Config::new().context("Failed to initialize libpkgx config")?;
+    let config = pkgx_config
+        .get_config()
+        .context("Failed to get pkgx config")?;
 
     std::fs::create_dir_all(config.pantry_db_file.parent().unwrap())?;
     let mut conn = rusqlite::Connection::open(&config.pantry_db_file)?;
@@ -147,9 +173,14 @@ pub fn map_tool_to_project(tool_name: &str, conn: &rusqlite::Connection) -> Resu
 }
 
 /// Resolve a tool name and version spec to a project name and tool spec
-pub fn resolve_tool_to_project(tool_name: &str, version_spec: &str) -> Result<(String, String)> {
-    // TODO: Make this variable mutable and update variables to set directory paths
-    let config = Config::new().context("Failed to initialize libpkgx config")?;
+pub fn resolve_tool_to_project(
+    tool_name: &str,
+    version_spec: &str,
+    pkgx_config: &PkgxConfig,
+) -> Result<(String, String)> {
+    let config = pkgx_config
+        .get_config()
+        .context("Failed to initialize libpkgx config")?;
     std::fs::create_dir_all(config.pantry_db_file.parent().unwrap())?;
     let mut conn = rusqlite::Connection::open(&config.pantry_db_file)?;
 
@@ -268,7 +299,11 @@ mod tests {
     #[test]
     fn test_resolve_tool_to_project() {
         // Test the full resolution flow including version spec
-        let result = resolve_tool_to_project("node", "latest");
+        let result = resolve_tool_to_project(
+            "node",
+            "latest",
+            &PkgxConfig::new("/tmp/pkgx_test_dir", "/tmp/pkgx_pantry_dir"),
+        );
         match &result {
             Ok(_) => {
                 let (project, spec) = result.unwrap();
@@ -289,7 +324,10 @@ mod tests {
 
     #[test]
     fn test_resolve_package_with_libpkgx() {
-        let result = resolve_package_with_libpkgx(&["nodejs.org".to_string()]);
+        let result = resolve_package_with_libpkgx(
+            &["nodejs.org".to_string()],
+            &PkgxConfig::new("/tmp/pkgx_test_dir", "/tmp/pkgx_pantry_dir"),
+        );
         match result {
             Ok(_) => {}
             Err(e) => {

@@ -87,16 +87,7 @@ fn test_x_without_existing_pkgx_cache() {
 #[serial]
 fn test_x_python_version() {
     let output = run_picolayer(&["x", "python@3.11", "--version"]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Python 3.11"));
 }
@@ -105,16 +96,7 @@ fn test_x_python_version() {
 #[serial]
 fn test_x_node_version() {
     let output = run_picolayer(&["x", "node@18", "--version"]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("v18"));
 }
@@ -135,15 +117,7 @@ fn test_x_with_working_directory() {
         "test_script.py",
     ]);
 
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Hello from script"));
 }
@@ -162,16 +136,7 @@ fn test_x_dependency_detection() {
         "node",
         "--version",
     ]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("v"));
 }
@@ -192,15 +157,7 @@ fn test_x_python_with_requirements() {
         "--version",
     ]);
 
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Python"));
 }
@@ -219,16 +176,7 @@ fn test_x_go_with_mod() {
         "go",
         "version",
     ]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("go version"));
 }
@@ -237,16 +185,7 @@ fn test_x_go_with_mod() {
 #[serial]
 fn test_x_python_with_version_simple() {
     let output = run_picolayer(&["x", "python@3.10", "--version"]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Python 3.10"));
 }
@@ -255,16 +194,7 @@ fn test_x_python_with_version_simple() {
 #[serial]
 fn test_x_python_latest() {
     let output = run_picolayer(&["x", "python", "--version"]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Python"));
 }
@@ -283,16 +213,7 @@ fn test_x_python_script() {
         "python",
         script_path.to_str().unwrap(),
     ]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Hello from Python!"));
 }
@@ -301,16 +222,7 @@ fn test_x_python_script() {
 #[serial]
 fn test_x_node_with_version_simple() {
     let output = run_picolayer(&["x", "node@18", "--version"]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("v18."));
 }
@@ -319,16 +231,7 @@ fn test_x_node_with_version_simple() {
 #[serial]
 fn test_x_python_inline_code() {
     let output = run_picolayer(&["x", "python", "-c", "print('Hello from Python!')"]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Hello from Python!"));
 }
@@ -343,16 +246,7 @@ fn test_x_node_inline_code() {
         "-e",
         "console.log('Hello from Node.js!')",
     ]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Hello from Node.js!"));
 }
@@ -361,16 +255,7 @@ fn test_x_node_inline_code() {
 #[serial]
 fn test_x_go_with_version() {
     let output = run_picolayer(&["x", "go@1.21", "version"]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("go1.21"));
 }
@@ -379,16 +264,7 @@ fn test_x_go_with_version() {
 #[serial]
 fn test_x_ruby_inline() {
     let output = run_picolayer(&["x", "ruby", "-e", "puts 'Hello from Ruby!'"]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("Hello from Ruby!"));
 }
@@ -405,16 +281,7 @@ fn test_x_with_env_vars() {
         "-c",
         "import os; print(f'TEST_VAR={os.environ.get(\"TEST_VAR\", \"not found\")}')",
     ]);
-
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
     let stdout = String::from_utf8_lossy(&output.stdout);
-    println!("Output: {}", stdout);
 
     assert!(stdout.contains("TEST_VAR=hello_world"));
 }
@@ -424,12 +291,6 @@ fn test_x_with_env_vars() {
 fn test_x_rust_with_version() {
     let output = run_picolayer(&["x", "rustc@1.70", "--version"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    if !output.status.success() {
-        println!("Error: {}", stderr);
-    };
-    println!("Output: {}", stdout);
-    println!("Output: {}", stderr);
 
     assert!(stdout.contains("rustc 1.70"));
 }
@@ -461,14 +322,7 @@ with open('{}', 'r') as f1, open('{}', 'r') as f2:
             file2.file_name().unwrap().to_str().unwrap()
         ),
     ]);
-    print!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-    print!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-
     let stdout = String::from_utf8_lossy(&output.stdout);
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Error: {}", stderr);
-    };
 
     assert!(stdout.contains("content1"));
     assert!(stdout.contains("content2"));

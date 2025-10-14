@@ -12,12 +12,12 @@ pub fn install(
     force_ppas_on_non_ubuntu: bool,
 ) -> Result<()> {
     anyhow::ensure!(
-        utils::os_detect::is_debian_like() && which::which("apt-get").is_ok(),
+        utils::os::is_debian_like() && which::which("apt-get").is_ok(),
         "apt-get should be used on Debian-like distributions (Debian, Ubuntu, etc.)"
     );
 
     let mut ppas = ppas.map(|p| p.to_vec()).unwrap_or_default();
-    if !ppas.is_empty() && !utils::os_detect::is_ubuntu() && !force_ppas_on_non_ubuntu {
+    if !ppas.is_empty() && !utils::os::is_ubuntu() && !force_ppas_on_non_ubuntu {
         warn!("PPAs are ignored on non-Ubuntu distros!");
         info!("Use --force-ppas-on-non-ubuntu to include them anyway.");
         ppas.clear();
@@ -81,7 +81,7 @@ pub fn add_ppas(ppas: &[String]) -> Result<(Vec<String>, Vec<String>)> {
         })
         .collect();
 
-    let required_packages: Vec<&str> = if utils::os_detect::is_ubuntu() {
+    let required_packages: Vec<&str> = if utils::os::is_ubuntu() {
         PPA_SUPPORT_PACKAGES.to_vec()
     } else {
         PPA_SUPPORT_PACKAGES

@@ -15,7 +15,6 @@ pub fn run_picolayer(args: &[&str]) -> std::process::Output {
         .output()
         .expect("Failed to execute picolayer");
 
-    // Print STDOUT and STDERR to help with debugging
     println!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
     println!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
 
