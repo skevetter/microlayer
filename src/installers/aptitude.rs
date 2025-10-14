@@ -6,7 +6,7 @@ use log::debug;
 /// Install packages using aptitude
 pub fn install(packages: &[String]) -> Result<()> {
     anyhow::ensure!(
-        utils::os_detect::is_debian_like(),
+        utils::os::is_debian_like(),
         "aptitude should be used on Debian-like distributions (Debian, Ubuntu, etc.)"
     );
 

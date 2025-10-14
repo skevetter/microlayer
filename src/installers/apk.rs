@@ -5,7 +5,7 @@ use log::debug;
 /// Install packages using apk
 pub fn install(packages: &[String]) -> Result<()> {
     anyhow::ensure!(
-        utils::os_detect::is_alpine(),
+        utils::os::is_alpine(),
         "apk should be used on Alpine Linux distribution"
     );
 
