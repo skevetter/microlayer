@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use log::info;
+use log::{debug, info, warn};
 use std::path::Path;
 use std::{collections::HashMap, env};
 use tempfile::TempDir;
@@ -16,9 +16,9 @@ pub struct RunConfig<'a> {
 pub fn execute(input: &RunConfig) -> Result<()> {
     validate_working_directory(input.working_dir)?;
     let (tool_name, version_spec) = parse_tool_spec(input.tool);
-    info!("Working directory: {}", input.working_dir);
-    info!("Tool: {} ({})", tool_name, version_spec);
-    info!("Command: {}", input.args.join(" "));
+    debug!("Working directory: {}", input.working_dir);
+    debug!("Tool: {} ({})", tool_name, version_spec);
+    debug!("Command: {}", input.args.join(" "));
 
     let env_map = parse_env_vars(&input.env_vars)?;
 
@@ -28,21 +28,6 @@ pub fn execute(input: &RunConfig) -> Result<()> {
     // Create virtual environment directory structure
     let pkgx_dir = _temp_dir.path().join("x").join("pkgx");
     let pantry_dir = _temp_dir.path().join("x").join("pantry");
-
-    // Set PKGX_DIR and PKGX_PANTRY_DIR for for pantry isolation
-    // TODO: Avoid modifying global state. Environment variables are read
-    // at pkgx::resolve_tool_to_project
-    if std::env::var("PKGX_DIR").is_err() {
-        unsafe {
-            std::env::set_var("PKGX_DIR", &pkgx_dir);
-        }
-    }
-
-    if std::env::var("PKGX_PANTRY_DIR").is_err() {
-        unsafe {
-            std::env::set_var("PKGX_PANTRY_DIR", &pantry_dir);
-        }
-    }
 
     // Ensure directories exist
     std::fs::create_dir_all(&pkgx_dir).context("Failed to create pkgx directory")?;
@@ -56,8 +41,8 @@ pub fn execute(input: &RunConfig) -> Result<()> {
         .to_str()
         .context("Failed to convert pantry directory path to string")?;
 
-    info!("Using pkgx virtual environment: {}", pkgx_dir_str);
-    info!("Using pantry directory: {}", pantry_dir_str);
+    debug!("Using pkgx virtual environment: {}", pkgx_dir_str);
+    debug!("Using pantry directory: {}", pantry_dir_str);
 
     let working_path = Path::new(input.working_dir);
 
@@ -150,13 +135,16 @@ fn execute_with_pkgx_library(
         anyhow::bail!("No arguments provided for tool: {}", tool_name);
     }
 
-    let (project_name, tool_spec) = pkgx::resolve_tool_to_project(tool_name, version_spec)?;
+    let pkgx_config = pkgx::PkgxConfig::new(pkgx_dir, pantry_dir);
+    let (project_name, tool_spec) =
+        pkgx::resolve_tool_to_project(tool_name, version_spec, &pkgx_config)
+            .context("Failed to resolve tool to project using pkgx")?;
 
     info!("Resolving package: {}", tool_spec);
 
     let mut cmd_env = create_command_env(env_map, pkgx_dir, pantry_dir);
 
-    match pkgx::resolve_package_with_libpkgx(&[tool_spec]) {
+    match pkgx::resolve_package_with_libpkgx(&[tool_spec], &pkgx_config) {
         Ok((pkgx_env, installations)) => {
             cmd_env.extend(pkgx_env); // Merge pkgx environment variables
 
@@ -175,7 +163,7 @@ fn execute_with_pkgx_library(
                 }
             }
 
-            info!("Resolved package with libpkgx");
+            debug!("Resolved package with libpkgx");
             let status = std::process::Command::new(tool_name)
                 .args(args)
                 .current_dir(working_path.to_str().context("Invalid working directory")?)
@@ -186,14 +174,14 @@ fn execute_with_pkgx_library(
                 .context("Failed to execute command with libpkgx")?;
 
             if status.success() {
-                info!("Command executed successfully with pkgx library!");
+                debug!("Command executed successfully with pkgx library!");
                 Ok(())
             } else {
                 anyhow::bail!("Command failed with exit code: {:?}", status.code());
             }
         }
         Err(e) => {
-            info!(
+            warn!(
                 "Failed to resolve package with libpkgx, trying pkgx binary: {}",
                 e
             );
@@ -223,7 +211,9 @@ fn execute_with_pkgx_binary(
         anyhow::bail!("pkgx is not available. Install pkgx from https://pkgx.sh.");
     }
 
-    let (project_name, _) = pkgx::resolve_tool_to_project(tool_name, version_spec)?;
+    let pkgx_config = pkgx::PkgxConfig::new(pkgx_dir, pantry_dir);
+    let (project_name, _) = pkgx::resolve_tool_to_project(tool_name, version_spec, &pkgx_config)
+        .context("Failed to resolve tool to project using pkgx")?;
 
     let project_arg = if version_spec == "latest" {
         format!("+{}", project_name)
@@ -400,7 +390,11 @@ mod tests {
     #[test]
     #[serial]
     fn test_resolve_tool_to_project() {
-        let result = pkgx::resolve_tool_to_project("node", "latest");
+        let result = pkgx::resolve_tool_to_project(
+            "node",
+            "latest",
+            &pkgx::PkgxConfig::new("/tmp/pkgx_test_dir", "/tmp/pkgx_pantry_dir"),
+        );
         match &result {
             Ok(_) => {
                 let (project, spec) = result.unwrap();
@@ -417,7 +411,11 @@ mod tests {
         }
 
         // Test with version
-        let result = pkgx::resolve_tool_to_project("python", "3.11");
+        let result = pkgx::resolve_tool_to_project(
+            "python",
+            "3.11",
+            &pkgx::PkgxConfig::new("/tmp/pkgx_test_dir", "/tmp/pkgx_pantry_dir"),
+        );
         match &result {
             Ok(_) => {
                 let (project, spec) = result.unwrap();
