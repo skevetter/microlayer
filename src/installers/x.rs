@@ -63,25 +63,36 @@ pub fn execute(input: &RunConfig) -> Result<()> {
 
     let working_path = Path::new(input.working_dir);
 
-    if pkgx::check_pkgx_binary() {
-        execute_with_pkgx_binary(
-            &tool_name,
-            &version_spec,
-            &input.args,
-            working_path,
-            &env_map,
-            &exec_env,
-        )
-    } else {
-        execute_with_pkgx_library(
-            &tool_name,
-            &version_spec,
-            &input.args,
-            working_path,
-            &env_map,
-            &exec_env,
-        )
-    }
+    temp_env::with_vars(
+        [
+            // These envs must still be set because libpgx config uses
+            // them internally when initializing the config, even though
+            // they are overridden manually later in pkgx.rs.
+            ("PKGX_DIR", Some(&exec_env.pkgx_dir as &str)),
+            ("PKGX_PANTRY_DIR", Some(&exec_env.pantry_dir as &str)),
+        ],
+        || {
+            if pkgx::check_pkgx_binary() {
+                execute_with_pkgx_binary(
+                    &tool_name,
+                    &version_spec,
+                    &input.args,
+                    working_path,
+                    &env_map,
+                    &exec_env,
+                )
+            } else {
+                execute_with_pkgx_library(
+                    &tool_name,
+                    &version_spec,
+                    &input.args,
+                    working_path,
+                    &env_map,
+                    &exec_env,
+                )
+            }
+        },
+    )
 }
 
 fn validate_working_directory(working_dir: &str) -> Result<()> {
