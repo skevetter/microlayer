@@ -13,6 +13,41 @@ pub struct RunConfig<'a> {
     pub env_vars: Vec<String>,
 }
 
+struct ExecutionEnvironment {
+    pkgx_dir: String,
+    pantry_dir: String,
+    _temp_dir: TempDir,
+}
+
+impl ExecutionEnvironment {
+    fn new() -> Result<Self> {
+        let temp_dir =
+            TempDir::with_prefix("picolayer_").context("Failed to create temporary directory")?;
+
+        let pkgx_dir = temp_dir.path().join("x").join("pkgx");
+        let pantry_dir = temp_dir.path().join("x").join("pantry");
+
+        std::fs::create_dir_all(&pkgx_dir).context("Failed to create pkgx directory")?;
+        std::fs::create_dir_all(&pantry_dir).context("Failed to create pantry directory")?;
+
+        Ok(Self {
+            pkgx_dir: pkgx_dir
+                .to_str()
+                .context("Failed to convert pkgx directory path to string")?
+                .to_string(),
+            pantry_dir: pantry_dir
+                .to_str()
+                .context("Failed to convert pantry directory path to string")?
+                .to_string(),
+            _temp_dir: temp_dir,
+        })
+    }
+
+    fn pkgx_config(&self) -> pkgx::PkgxConfig {
+        pkgx::PkgxConfig::new(&self.pkgx_dir, &self.pantry_dir)
+    }
+}
+
 pub fn execute(input: &RunConfig) -> Result<()> {
     validate_working_directory(input.working_dir)?;
     let (tool_name, version_spec) = parse_tool_spec(input.tool);
@@ -21,28 +56,10 @@ pub fn execute(input: &RunConfig) -> Result<()> {
     debug!("Command: {}", input.args.join(" "));
 
     let env_map = parse_env_vars(&input.env_vars)?;
+    let exec_env = ExecutionEnvironment::new()?;
 
-    let _temp_dir =
-        TempDir::with_prefix("picolayer_").context("Failed to create temporary directory")?;
-
-    // Create virtual environment directory structure
-    let pkgx_dir = _temp_dir.path().join("x").join("pkgx");
-    let pantry_dir = _temp_dir.path().join("x").join("pantry");
-
-    // Ensure directories exist
-    std::fs::create_dir_all(&pkgx_dir).context("Failed to create pkgx directory")?;
-    std::fs::create_dir_all(&pantry_dir).context("Failed to create pantry directory")?;
-
-    let pkgx_dir_str = pkgx_dir
-        .to_str()
-        .context("Failed to convert pkgx directory path to string")?;
-
-    let pantry_dir_str = pantry_dir
-        .to_str()
-        .context("Failed to convert pantry directory path to string")?;
-
-    debug!("Using pkgx virtual environment: {}", pkgx_dir_str);
-    debug!("Using pantry directory: {}", pantry_dir_str);
+    debug!("Using pkgx virtual environment: {}", exec_env.pkgx_dir);
+    debug!("Using pantry directory: {}", exec_env.pantry_dir);
 
     let working_path = Path::new(input.working_dir);
 
@@ -53,8 +70,7 @@ pub fn execute(input: &RunConfig) -> Result<()> {
             &input.args,
             working_path,
             &env_map,
-            pkgx_dir_str,
-            pantry_dir_str,
+            &exec_env,
         )
     } else {
         execute_with_pkgx_library(
@@ -63,8 +79,7 @@ pub fn execute(input: &RunConfig) -> Result<()> {
             &input.args,
             working_path,
             &env_map,
-            pkgx_dir_str,
-            pantry_dir_str,
+            &exec_env,
         )
     }
 }
@@ -126,8 +141,7 @@ fn execute_with_pkgx_library(
     args: &[String],
     working_path: &Path,
     env_map: &[(String, String)],
-    pkgx_dir: &str,
-    pantry_dir: &str,
+    exec_env: &ExecutionEnvironment,
 ) -> Result<()> {
     info!("Using pkgx library integration with virtual environment...");
 
@@ -135,33 +149,19 @@ fn execute_with_pkgx_library(
         anyhow::bail!("No arguments provided for tool: {}", tool_name);
     }
 
-    let pkgx_config = pkgx::PkgxConfig::new(pkgx_dir, pantry_dir);
+    let pkgx_config = exec_env.pkgx_config();
     let (project_name, tool_spec) =
         pkgx::resolve_tool_to_project(tool_name, version_spec, &pkgx_config)
             .context("Failed to resolve tool to project using pkgx")?;
 
     info!("Resolving package: {}", tool_spec);
 
-    let mut cmd_env = create_command_env(env_map, pkgx_dir, pantry_dir);
-
     match pkgx::resolve_package_with_libpkgx(&[tool_spec], &pkgx_config) {
         Ok((pkgx_env, installations)) => {
-            cmd_env.extend(pkgx_env); // Merge pkgx environment variables
+            let mut cmd_env = create_command_env(env_map, &exec_env.pkgx_dir, &exec_env.pantry_dir);
+            cmd_env.extend(pkgx_env);
 
-            for installation in &installations {
-                if installation.pkg.project == project_name {
-                    info!("Package installed at: {}", installation.path.display());
-
-                    // Check for executable in common binary directories
-                    for bin_dir in ["bin", "sbin"] {
-                        let executable_path = installation.path.join(bin_dir).join(tool_name);
-                        if executable_path.exists() {
-                            info!("Executable found at: {}", executable_path.display());
-                            break;
-                        }
-                    }
-                }
-            }
+            log_installations(&installations, &project_name, tool_name);
 
             debug!("Resolved package with libpkgx");
             let status = std::process::Command::new(tool_name)
@@ -191,9 +191,28 @@ fn execute_with_pkgx_library(
                 args,
                 working_path,
                 env_map,
-                pkgx_dir,
-                pantry_dir,
+                exec_env,
             )
+        }
+    }
+}
+
+fn log_installations(
+    installations: &[libpkgx::types::Installation],
+    project_name: &str,
+    tool_name: &str,
+) {
+    for installation in installations {
+        if installation.pkg.project == project_name {
+            info!("Package installed at: {}", installation.path.display());
+
+            for bin_dir in ["bin", "sbin"] {
+                let executable_path = installation.path.join(bin_dir).join(tool_name);
+                if executable_path.exists() {
+                    info!("Executable found at: {}", executable_path.display());
+                    break;
+                }
+            }
         }
     }
 }
@@ -204,22 +223,17 @@ fn execute_with_pkgx_binary(
     args: &[String],
     working_path: &Path,
     env_map: &[(String, String)],
-    pkgx_dir: &str,
-    pantry_dir: &str,
+    exec_env: &ExecutionEnvironment,
 ) -> Result<()> {
     if !pkgx::check_pkgx_binary() {
         anyhow::bail!("pkgx is not available. Install pkgx from https://pkgx.sh.");
     }
 
-    let pkgx_config = pkgx::PkgxConfig::new(pkgx_dir, pantry_dir);
+    let pkgx_config = exec_env.pkgx_config();
     let (project_name, _) = pkgx::resolve_tool_to_project(tool_name, version_spec, &pkgx_config)
         .context("Failed to resolve tool to project using pkgx")?;
 
-    let project_arg = if version_spec == "latest" {
-        format!("+{}", project_name)
-    } else {
-        format!("+{}@{}", project_name, version_spec)
-    };
+    let project_arg = format_project_arg(&project_name, version_spec);
 
     info!("Using pkgx binary with virtual environment...");
 
@@ -228,13 +242,9 @@ fn execute_with_pkgx_binary(
         .arg(tool_name)
         .args(args)
         .current_dir(working_path.to_str().context("Invalid working directory")?)
-        .env("PKGX_DIR", pkgx_dir) // Set virtual environment directory
-        .env("PKGX_PANTRY_DIR", pantry_dir); // Set pantry directory
-
-    // User-provided environment variables
-    for (key, value) in env_map {
-        cmd.env(key, value);
-    }
+        .env("PKGX_DIR", &exec_env.pkgx_dir)
+        .env("PKGX_PANTRY_DIR", &exec_env.pantry_dir)
+        .envs(env_map.iter().map(|(k, v)| (k.as_str(), v.as_str())));
 
     let status = cmd
         .status()
@@ -248,10 +258,33 @@ fn execute_with_pkgx_binary(
     }
 }
 
+fn format_project_arg(project_name: &str, version_spec: &str) -> String {
+    if version_spec == "latest" {
+        format!("+{}", project_name)
+    } else {
+        format!("+{}@{}", project_name, version_spec)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serial_test::serial;
+
+    fn setup_test_db() -> (libpkgx::config::Config, rusqlite::Connection) {
+        let config = libpkgx::config::Config::new().expect("Failed to initialize config");
+        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
+        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            if libpkgx::sync::should(&config).unwrap_or(false) {
+                libpkgx::sync::ensure(&config, &mut conn).await.ok();
+            }
+        });
+
+        (config, conn)
+    }
 
     #[test]
     #[serial]
@@ -280,19 +313,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_map_tool_to_project_python() {
-        use libpkgx::{config::Config, sync};
-
-        let config = Config::new().expect("Failed to initialize config");
-        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
-        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
-
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            if sync::should(&config).unwrap_or(false) {
-                sync::ensure(&config, &mut conn).await.ok();
-            }
-        });
-
+        let (_config, conn) = setup_test_db();
         let result = pkgx::map_tool_to_project("python", &conn);
         assert!(result.is_ok());
         let project = result.unwrap();
@@ -302,19 +323,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_map_tool_to_project_node() {
-        use libpkgx::{config::Config, sync};
-
-        let config = Config::new().expect("Failed to initialize config");
-        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
-        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
-
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            if sync::should(&config).unwrap_or(false) {
-                sync::ensure(&config, &mut conn).await.ok();
-            }
-        });
-
+        let (_config, conn) = setup_test_db();
         let result = pkgx::map_tool_to_project("node", &conn);
         assert!(result.is_ok());
         let project = result.unwrap();
@@ -324,19 +333,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_map_tool_to_project_go() {
-        use libpkgx::{config::Config, sync};
-
-        let config = Config::new().expect("Failed to initialize config");
-        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
-        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
-
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            if sync::should(&config).unwrap_or(false) {
-                sync::ensure(&config, &mut conn).await.ok();
-            }
-        });
-
+        let (_config, conn) = setup_test_db();
         let result = pkgx::map_tool_to_project("go", &conn);
         assert!(result.is_ok());
         let project = result.unwrap();
@@ -346,19 +343,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_map_tool_to_project_rust() {
-        use libpkgx::{config::Config, sync};
-
-        let config = Config::new().expect("Failed to initialize config");
-        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
-        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
-
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            if sync::should(&config).unwrap_or(false) {
-                sync::ensure(&config, &mut conn).await.ok();
-            }
-        });
-
+        let (_config, conn) = setup_test_db();
         let result = pkgx::map_tool_to_project("cargo", &conn);
         assert!(result.is_ok());
         let project = result.unwrap();
@@ -368,19 +353,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_map_tool_to_project_unknown() {
-        use libpkgx::{config::Config, sync};
-
-        let config = Config::new().expect("Failed to initialize config");
-        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
-        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
-
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            if sync::should(&config).unwrap_or(false) {
-                sync::ensure(&config, &mut conn).await.ok();
-            }
-        });
-
+        let (_config, conn) = setup_test_db();
         let result = pkgx::map_tool_to_project("unknown-tool-xyz-not-real", &conn);
         assert!(result.is_ok());
         let project = result.unwrap();
@@ -435,18 +408,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_query_various_tools() {
-        use libpkgx::{config::Config, sync};
-
-        let config = Config::new().expect("Failed to initialize config");
-        std::fs::create_dir_all(config.pantry_db_file.parent().unwrap()).unwrap();
-        let mut conn = rusqlite::Connection::open(&config.pantry_db_file).unwrap();
-
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            if sync::should(&config).unwrap_or(false) {
-                sync::ensure(&config, &mut conn).await.ok();
-            }
-        });
+        let (_config, conn) = setup_test_db();
 
         let tools = vec!["bash", "git", "curl", "wget", "make"];
         for tool in tools {
